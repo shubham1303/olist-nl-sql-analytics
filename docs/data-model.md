@@ -63,8 +63,8 @@ checked against an independent raw count
    are each aggregated per order (or per order × seller or order × category) in their
    own CTE, and only then joined. Joining raw items to raw payments multiplies rows, and
    a test demonstrates the resulting inflation.
-2. **Revenue has one meaning and one column.** `revenue` is item price for revenue
-   orders, and NULL otherwise. `SUM(revenue)` gives the same R$13,494,400.74 on every
+2. **Revenue has one meaning and one column.** `revenue` is merchandise revenue: item
+   price for revenue orders, and NULL otherwise ([ADR 0010](adr/0010-canonical-revenue.md)). `SUM(revenue)` gives the same R$13,494,400.74 on every
    view, and a test asserts that for all seven views that carry it. See
    [metrics.md](metrics.md).
 3. **Order outcomes are never weighted by items.** `order_items` deliberately has no
@@ -86,9 +86,13 @@ An order with items from two sellers has two `order_sellers` rows:
 - **Money** (`item_price_total`, `freight_total`, `revenue`) covers only that seller's
   items, so totals add up exactly.
 - **Outcomes** (`delivery_status`, `is_late`, `delivery_days`, `review_score`) belong to
-  the whole order and are attributed in full to each seller. A late multi-seller order
+  the whole order and are attributed in full to each seller
+  ([ADR 0011](adr/0011-review-and-outcome-attribution.md)). A late multi-seller order
   counts as late for every seller on it. This affects 1,278 orders. `order_seller_count`
   makes it visible.
+- **Grouped outcome counts aren't additive.** Late orders counted per seller, summed
+  across sellers, exceed the number of unique late orders. Overall outcome counts and
+  rates must come from `orders`.
 
 `order_categories` works the same way. `order_category_count` shows how many categories
 an order has.
@@ -111,8 +115,12 @@ rows. `delivery_days` is measured from the purchase timestamp to the delivery ti
 
 ## Category names
 
+- Raw source values are never changed
+  ([ADR 0012](adr/0012-category-translation-provenance.md)).
 - Olist's translation table maps 71 Portuguese names to English.
-- The `analytics_internal.product_category_map` view adds three project entries:
+- The `analytics_internal.product_category_map` view adds three project entries. For
+  each one it records the source value, Olist's English value (if any), the normalized
+  value and its provenance:
 
 | Portuguese | English | Why |
 |---|---|---|
@@ -151,8 +159,10 @@ Every caveat below was found by profiling the pinned dataset and is asserted in
 - Purchases span 2016-09-04 to 2018-10-17, but **November 2016 has no orders at all**.
   September 2016 has 4 orders, December 2016 has 1, and September/October 2018 have 20
   combined.
-- **Trend questions should default to 2017-01 through 2018-08.** The catalog tells the
-  model this.
+- **2017-01 through 2018-08 is the recommended trend and comparison window**
+  ([ADR 0013](adr/0013-recommended-time-window.md)). It's guidance, not a filter.
+  Generated SQL keeps the period the user asked for, and the caveat is stated when a
+  query touches the incomplete months.
 - Missing timestamps: approval 160, carrier hand-off 1,783, customer delivery 2,965
   (including 8 orders marked delivered).
 - Chronology exceptions: 1,359 carrier hand-offs happen before approval, and 23

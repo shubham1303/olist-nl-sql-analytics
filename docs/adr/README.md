@@ -14,5 +14,9 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0007](0007-deterministic-chart-selection.md) | Deterministic chart selection from result shape | Accepted |
 | [0008](0008-excluded-services.md) | Services deliberately excluded until a measured need exists | Accepted |
 | [0009](0009-tooling-and-repo-conventions.md) | Tooling and repository conventions | Accepted |
+| [0010](0010-canonical-revenue.md) | Canonical revenue is merchandise revenue | Accepted |
+| [0011](0011-review-and-outcome-attribution.md) | Latest review per order; full outcome attribution in seller/category views | Accepted |
+| [0012](0012-category-translation-provenance.md) | Category translations: raw unchanged, corrections in the curated layer with provenance | Accepted |
+| [0013](0013-recommended-time-window.md) | 2017-01 to 2018-08 is a recommended window, not an automatic filter | Accepted |
 
 Template: [template.md](template.md)

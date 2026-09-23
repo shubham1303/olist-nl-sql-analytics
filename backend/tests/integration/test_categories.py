@@ -52,6 +52,34 @@ def test_project_translations(reader: Conn) -> None:
     }
 
 
+def test_manual_translations_record_source_normalized_and_provenance(owner: Conn) -> None:
+    # ADR 0012: every project entry keeps its source value and states why it exists.
+    rows = owner.execute(
+        """SELECT product_category_name, source_english_name, product_category, provenance
+           FROM analytics_internal.product_category_map
+           WHERE translation_source = 'project' ORDER BY 1"""
+    ).fetchall()
+    assert [(pt, src, norm) for pt, src, norm, _ in rows] == [
+        ("casa_conforto", "home_confort", "home_comfort"),
+        ("pc_gamer", None, "pc_gamer"),
+        (
+            "portateis_cozinha_e_preparadores_de_alimentos",
+            None,
+            "small_appliances_kitchen_and_food_preparers",
+        ),
+    ]
+    assert all(provenance.startswith("ADR 0012:") for *_, provenance in rows)
+
+
+def test_raw_source_values_are_unchanged(owner: Conn) -> None:
+    assert row(
+        owner,
+        """SELECT (SELECT product_category_name_english FROM raw.product_category_name_translation
+                   WHERE product_category_name = 'casa_conforto'),
+                  (SELECT count(*) FROM raw.products WHERE product_category_name = 'pc_gamer')""",
+    ) == ("home_confort", 3)
+
+
 def test_source_typo_is_not_exposed(reader: Conn) -> None:
     assert (
         scalar(reader, "SELECT count(*) FROM products WHERE product_category = 'home_confort'") == 0

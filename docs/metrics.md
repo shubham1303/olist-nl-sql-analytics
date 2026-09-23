@@ -9,16 +9,17 @@ independently in an earlier project (pandas + SQL Server) and reconcile exactly.
 ## Four kinds of money
 
 Olist records money in four ways. The application treats them as separate metrics,
-and only one of them is "revenue".
+and only one of them is "revenue": **merchandise revenue**
+([ADR 0010](adr/0010-canonical-revenue.md)).
 
 | Concept | Where | What it is | Total (revenue orders) |
 |---|---|---|---:|
-| **Item price** → **revenue** | `order_items.price` | Price of the product, excluding shipping | R$13,494,400.74 |
+| **Item price** → **merchandise revenue** | `order_items.price` | Price of the product, excluding shipping | R$13,494,400.74 |
 | Freight value | `order_items.freight_value` | Shipping charged per item | R$2,241,126.29 |
 | Total order value | `orders.order_total_value` | Item price + freight | R$15,735,527.03 |
 | Payment value | `order_payments.payment_value` | What was paid, including installment interest and vouchers | R$15,738,221.95 |
 
-### Why revenue is item price
+### Why revenue is merchandise revenue (item price)
 
 1. **It attributes exactly.** Price belongs to one item, so it splits cleanly by
    product, category and seller. Revenue by category sums to total revenue, and so do
@@ -56,7 +57,7 @@ orders.
 | `delivered_order_count` | Status delivered | `COUNT(*) FILTER (WHERE is_delivered)` | 96,478 † |
 | `canceled_order_count` | Status canceled (not `unavailable`) | `COUNT(*) FILTER (WHERE is_canceled)` | 625 † |
 | `cancellation_rate` | Canceled ÷ all orders | numerator ÷ `COUNT(*)` | 0.63% |
-| `revenue` | Item price, revenue orders | `SUM(revenue)` | R$13,494,400.74 |
+| `revenue` | Merchandise revenue: item price, revenue orders | `SUM(revenue)` | R$13,494,400.74 |
 | `average_order_value` | Revenue ÷ revenue orders | `AVG(revenue)` | R$137.42 |
 | `items_sold` | Units in revenue orders | `COUNT(revenue)` (order_items) | 112,101 |
 | `freight_value` | Freight, revenue orders | `SUM(freight_total) FILTER (WHERE is_revenue_order)` | R$2,241,126.29 |
@@ -80,14 +81,16 @@ tests check that each variant returns exactly the primary value.
   denominator excludes undelivered orders and the 8 delivered orders with no delivery
   date.
 - **Average review score is order-weighted.** Each reviewed order contributes its
-  latest review once. A review-row average would weight the 547 multi-review orders
+  latest review once ([ADR 0011](adr/0011-review-and-outcome-attribution.md)). A review-row average would weight the 547 multi-review orders
   more heavily.
 - **Repeat customers need two delivered orders.** Two orders where one was canceled
   don't count. Using per-order `customer_id` would make the rate 0%.
 - **Canceled excludes `unavailable`.** "Unavailable" means the product couldn't be
   supplied. Both statuses are excluded from revenue.
 - **Seller and category rates** computed on the bridge views attribute each order's
-  outcome to every seller or category on it (see [data-model.md](data-model.md)). The
+  outcome to every seller or category on it ([ADR 0011](adr/0011-review-and-outcome-attribution.md)).
+  Those grouped outcome counts **aren't additive**: summed across sellers or categories
+  they exceed the number of unique orders, so overall counts and rates come from `orders`. The
   `sellers` scorecard uses those definitions, and a test checks that its
   `late_delivery_rate` matches.
 - **Small samples:** `sellers.has_min_20_delivered_orders` marks the 804 sellers with

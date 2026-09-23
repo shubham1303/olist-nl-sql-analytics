@@ -17,7 +17,11 @@ dataset:
     - Timestamps are local Brazilian time, stored without a time zone.
     - Orders span 2016-09-04 to 2018-10-17, but only 2017-01 through 2018-08 has complete
       monthly volume. 2016 is sparse (no orders at all in 2016-11) and 2018-09/2018-10 hold
-      only 20 orders. Time series should use 2017-01-01 to 2018-08-31 unless asked otherwise.
+      only 20 orders.
+    - 2017-01-01 to 2018-08-31 is the recommended window for trends and period comparisons
+      (ADR 0013). Do not add this filter automatically; when a question asks about any period,
+      use exactly that period, and when it touches 2016 or 2018-09/2018-10, state that those
+      months are incomplete.
     - Customer and seller locations are Brazilian cities and two-letter state codes (e.g. SP, RJ).
     - Product categories are English snake_case names (e.g. health_beauty, bed_bath_table).
 
@@ -27,7 +31,7 @@ glossary:
   - term: order date
     meaning: The purchase timestamp (purchased_at / purchase_date / purchase_month).
   - term: sales
-    meaning: Revenue (see metric revenue) unless the question says orders or units.
+    meaning: Merchandise revenue (metric revenue) unless the question says orders or units.
   - term: category
     meaning: product_category, an English category name.
   - term: state / region
@@ -132,7 +136,8 @@ relations:
     caveats:
       - Money columns cover only this seller's items.
       - Delivery and review outcomes belong to the whole order and are attributed in full to each
-        seller on it (1,278 orders have more than one seller).
+        seller on it (1,278 orders have more than one seller), so outcome counts summed across
+        sellers exceed the number of unique orders. Use orders for overall outcome counts or rates.
     columns:
       - {name: order_id, type: text, description: "Order identifier."}
       - {name: seller_id, type: text, description: "Seller identifier."}
@@ -167,7 +172,8 @@ relations:
     caveats:
       - Money columns cover only this category's items.
       - Delivery and review outcomes belong to the whole order and are attributed in full to each
-        category on it.
+        category on it, so outcome counts summed across categories exceed the number of unique
+        orders. Use orders for overall outcome counts or rates.
     columns:
       - {name: order_id, type: text, description: "Order identifier."}
       - {name: product_category, type: text, description: "English product category ('uncategorized' when unknown)."}
@@ -335,8 +341,8 @@ metrics:
     aliases: [cancellation rate, cancel rate, percentage of orders canceled]
 
   - name: revenue
-    label: Revenue
-    definition: Sum of item prices, excluding freight, for orders that are not canceled or
+    label: Merchandise revenue
+    definition: Merchandise revenue. Sum of item prices, excluding freight, for orders that are not canceled or
       unavailable and that contain at least one item.
     relation: orders
     expression: SUM(revenue)
@@ -356,7 +362,7 @@ metrics:
     rationale: Item price is the only money measure that can be attributed exactly to products,
       categories and sellers, so revenue adds up the same way at every grain. Payments include
       freight and installment interest and cannot be split by item.
-    aliases: [revenue, sales, sales value, gmv, gross merchandise value, merchandise revenue, product revenue]
+    aliases: [revenue, merchandise revenue, sales, sales value, gmv, gross merchandise value, merchandise revenue, product revenue]
 
   - name: average_order_value
     label: Average order value

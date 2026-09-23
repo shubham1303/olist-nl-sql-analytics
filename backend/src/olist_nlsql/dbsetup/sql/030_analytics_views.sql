@@ -5,10 +5,11 @@
 -- its grain; tests assert the grain key is unique and that money totals agree
 -- across views.
 --
--- Revenue (canonical): sum of item price, excluding freight, for orders whose
--- status is not 'canceled' or 'unavailable' and that have at least one item.
--- The `revenue` column is NULL outside that population, so SUM(revenue) and
--- AVG(revenue) are correct without extra filters. See docs/metrics.md.
+-- Revenue (canonical) is merchandise revenue (ADR 0010): sum of item price,
+-- excluding freight, for orders whose status is not 'canceled' or 'unavailable'
+-- and that have at least one item. The `revenue` column is NULL outside that
+-- population, so SUM(revenue) and AVG(revenue) are correct without extra
+-- filters. See docs/metrics.md.
 --
 -- Dependency order: analytics_internal.product_category_map -> orders ->
 -- products -> order_items, order_sellers, order_categories, order_payments ->
@@ -23,22 +24,23 @@ COMMENT ON SCHEMA analytics IS
     'Curated business views over the Olist dataset. The only schema the NL-to-SQL model sees.';
 
 -- ---------------------------------------------------------------------------
--- Category mapping. Grain: one row per Portuguese category name in products.
--- Olist's translation table is used as-is, except for three project entries:
---   * casa_conforto: corrects the source typo 'home_confort' -> 'home_comfort'
---     (its sibling is 'home_comfort_2').
---   * pc_gamer, portateis_cozinha_e_preparadores_de_alimentos: missing from the
---     source translation table (13 products). Named to match existing Olist
---     conventions (cf. portateis_casa_forno_e_cafe -> small_appliances_home_oven_and_coffee).
+-- Category mapping (ADR 0012). Grain: one row per Portuguese category name in
+-- products. Raw source values are never changed; Olist's translation is used
+-- as-is except for the project entries below, each recorded with its source
+-- value, normalized value and provenance.
 -- Products with no category map to 'uncategorized' (handled in the views).
 -- ---------------------------------------------------------------------------
 CREATE VIEW analytics_internal.product_category_map AS
-WITH project_translation (product_category_name, product_category_name_english) AS (
+WITH project_translation (product_category_name, product_category_name_english, provenance) AS (
     VALUES
-        ('casa_conforto', 'home_comfort'),
-        ('pc_gamer', 'pc_gamer'),
+        ('casa_conforto', 'home_comfort',
+         'ADR 0012: corrects source typo ''home_confort''; sibling category is ''home_comfort_2''.'),
+        ('pc_gamer', 'pc_gamer',
+         'ADR 0012: missing from source translation table (3 products); the source name is already English.'),
         ('portateis_cozinha_e_preparadores_de_alimentos',
-         'small_appliances_kitchen_and_food_preparers')
+         'small_appliances_kitchen_and_food_preparers',
+         'ADR 0012: missing from source translation table (10 products); follows Olist naming of '
+         'portateis_casa_forno_e_cafe -> small_appliances_home_oven_and_coffee.')
 ),
 categories AS (
     SELECT DISTINCT product_category_name
@@ -46,15 +48,17 @@ categories AS (
     WHERE product_category_name IS NOT NULL
 )
 SELECT
-    c.product_category_name,
+    c.product_category_name,                                 -- source value (Portuguese)
+    ot.product_category_name_english AS source_english_name, -- Olist's value, NULL if missing
     COALESCE(pt.product_category_name_english,
              ot.product_category_name_english,
-             c.product_category_name) AS product_category,
+             c.product_category_name) AS product_category,   -- normalized value
     CASE
         WHEN pt.product_category_name IS NOT NULL THEN 'project'
         WHEN ot.product_category_name IS NOT NULL THEN 'olist'
         ELSE 'untranslated'
-    END AS translation_source
+    END AS translation_source,
+    COALESCE(pt.provenance, 'Olist product_category_name_translation.csv') AS provenance
 FROM categories AS c
 LEFT JOIN project_translation AS pt USING (product_category_name)
 LEFT JOIN raw.product_category_name_translation AS ot USING (product_category_name);

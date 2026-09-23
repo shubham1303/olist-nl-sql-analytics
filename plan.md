@@ -35,6 +35,10 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | Charts | Deterministic frontend rules from result shape; no LLM | [0007](docs/adr/0007-deterministic-chart-selection.md) |
 | Exclusions | No RAG/vector DB, LangChain/agents, NAT, RDS Proxy, Cognito, WAF, DynamoDB, SQS, X-Ray | [0008](docs/adr/0008-excluded-services.md) |
 | Tooling | Python 3.13 + uv + ruff + mypy strict + pytest; Vite/React/TS + Vitest + npm; Terraform single root; GitHub Actions | [0009](docs/adr/0009-tooling-and-repo-conventions.md) |
+| Revenue | Canonical revenue = merchandise revenue (item price, excl. freight, eligible orders); freight, total order value, payment value are separate metrics | [0010](docs/adr/0010-canonical-revenue.md) |
+| Attribution | Latest review per order; order outcomes attributed fully to each seller/category; grouped outcome counts not additive | [0011](docs/adr/0011-review-and-outcome-attribution.md) |
+| Categories | Raw values unchanged; corrections/manual translations only in curated layer with source, normalized value, provenance | [0012](docs/adr/0012-category-translation-provenance.md) |
+| Time window | 2017-01..2018-08 recommended for trends/comparisons; never auto-filtered; requested periods preserved with caveat | [0013](docs/adr/0013-recommended-time-window.md) |
 
 ---
 
@@ -74,7 +78,7 @@ olist-nl-sql/
 ├── plan.md
 ├── .github/workflows/ci.yml
 ├── docs/
-│   ├── adr/                    # decisions (0001–0009)
+│   ├── adr/                    # decisions (0001–0013)
 │   ├── architecture.md         # Phase 9
 │   ├── security.md             # Phase 2
 │   ├── data-model.md           # raw → analytics design, grains, data-quality caveats
@@ -189,9 +193,10 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 - `dbsetup build` rebuilds everything in ~5 s; `dbsetup views` rebuilds the analytics layer only.
 - 8 views: orders, order_items, order_sellers, order_categories, order_payments, customers, sellers, products (grains in [docs/data-model.md](docs/data-model.md)).
 - 16 catalog metrics, every one executed and value-checked by tests ([docs/metrics.md](docs/metrics.md)).
-- Canonical revenue = item price for non-canceled/unavailable orders with items (R$13,494,400.74).
+- Canonical revenue = merchandise revenue: item price for non-canceled/unavailable orders with items (R$13,494,400.74).
 - Found and fixed: `localhost` → IPv6 stall on Windows (use 127.0.0.1); `views` not dropping `analytics_internal`; PUBLIC could connect to the `postgres` database.
-- Integration CI job written but not yet run on GitHub (no remote).
+- CI green on GitHub for `f8609fd` (run 35932520382): backend, database (Kaggle download → build → 169 integration tests), frontend, infra — all passed on the first run.
+- Phase 1 decisions recorded as ADRs 0010–0013 (merchandise revenue; latest review + full outcome attribution; translation provenance; recommended — not enforced — time window).
 
 ### Phase 0 checklist
 

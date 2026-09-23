@@ -1,0 +1,500 @@
+# Analytics catalog: the single source of truth (ADR 0005) for
+#   * the relations and columns the NL-to-SQL model may see,
+#   * the SQL validator allowlist (generated from this file in Phase 2),
+#   * business metric definitions and aliases.
+# Tests keep this file and the analytics views in sync (tests/integration/test_catalog_drift.py)
+# and execute every metric expression against the database.
+#
+# Column types are logical: text | integer | numeric | boolean | date | timestamp.
+
+version: 1
+
+dataset:
+  name: Olist Brazilian E-Commerce
+  currency: BRL
+  schema: analytics
+  notes:
+    - Timestamps are local Brazilian time, stored without a time zone.
+    - Orders span 2016-09-04 to 2018-10-17, but only 2017-01 through 2018-08 has complete
+      monthly volume. 2016 is sparse (no orders at all in 2016-11) and 2018-09/2018-10 hold
+      only 20 orders. Time series should use 2017-01-01 to 2018-08-31 unless asked otherwise.
+    - Customer and seller locations are Brazilian cities and two-letter state codes (e.g. SP, RJ).
+    - Product categories are English snake_case names (e.g. health_beauty, bed_bath_table).
+
+glossary:
+  - term: customer
+    meaning: A real person, identified by customer_unique_id. Never count per-order customer IDs.
+  - term: order date
+    meaning: The purchase timestamp (purchased_at / purchase_date / purchase_month).
+  - term: sales
+    meaning: Revenue (see metric revenue) unless the question says orders or units.
+  - term: category
+    meaning: product_category, an English category name.
+  - term: state / region
+    meaning: customer_state or seller_state (two-letter Brazilian state code).
+  - term: shipping / delivery cost
+    meaning: freight (freight_value / freight_total), reported separately from revenue.
+
+relations:
+  - name: orders
+    description: Order header with status, dates, delivery outcome, money totals and the
+      order's latest review. The main table for order-level questions.
+    grain: One row per order.
+    primary_key: [order_id]
+    caveats:
+      - Money columns cover all statuses; use revenue (NULL outside the revenue population)
+        or filter is_revenue_order for sales figures.
+      - An order's review_score is its most recently answered review (547 orders have several).
+    columns:
+      - {name: order_id, type: text, description: "Order identifier."}
+      - {name: customer_unique_id, type: text, description: "The real customer who placed the order. Use for any customer counting."}
+      - {name: customer_city, type: text, description: "Customer city at the time of this order (lowercase)."}
+      - {name: customer_state, type: text, description: "Customer state code at the time of this order."}
+      - name: order_status
+        type: text
+        description: Order lifecycle status.
+        values: [approved, canceled, created, delivered, invoiced, processing, shipped, unavailable]
+      - {name: is_delivered, type: boolean, description: "True when order_status = 'delivered'."}
+      - {name: is_canceled, type: boolean, description: "True when order_status = 'canceled'. Does not include 'unavailable'."}
+      - {name: is_revenue_order, type: boolean, description: "True when the order counts toward revenue: status is not canceled or unavailable and the order has items."}
+      - {name: purchased_at, type: timestamp, description: "When the customer placed the order."}
+      - {name: purchase_date, type: date, description: "Calendar date of purchased_at."}
+      - {name: purchase_month, type: date, description: "First day of the purchase month. Use for monthly trends."}
+      - {name: approved_at, type: timestamp, description: "When payment was approved. NULL for 160 orders."}
+      - {name: delivered_to_carrier_at, type: timestamp, description: "When the order was handed to the carrier."}
+      - {name: delivered_to_customer_at, type: timestamp, description: "When the customer received the order."}
+      - {name: estimated_delivery_date, type: date, description: "Delivery date promised to the customer at purchase."}
+      - name: delivery_status
+        type: text
+        description: Delivery outcome versus the promised date, compared by calendar date.
+        values: [early, on_time, late, not_delivered, missing_delivery_date]
+      - {name: is_late, type: boolean, description: "True when delivered after the estimated delivery date. NULL unless delivered with a delivery date."}
+      - {name: delivery_delay_days, type: integer, description: "Delivered date minus estimated date in whole days (positive = late). NULL unless delivered with a delivery date."}
+      - {name: delivery_days, type: numeric, description: "Days from purchase to customer delivery (2 decimals). NULL unless delivered with a delivery date."}
+      - {name: item_count, type: integer, description: "Number of items (units) on the order. 0 for orders without items."}
+      - {name: product_count, type: integer, description: "Number of distinct products on the order."}
+      - {name: seller_count, type: integer, description: "Number of distinct sellers on the order."}
+      - {name: item_price_total, type: numeric, description: "Sum of item prices on the order regardless of status. Excludes freight."}
+      - {name: freight_total, type: numeric, description: "Sum of freight charged on the order's items."}
+      - {name: order_total_value, type: numeric, description: "item_price_total + freight_total."}
+      - {name: revenue, type: numeric, description: "Item price total for revenue orders; NULL otherwise. SUM/AVG need no extra filter."}
+      - {name: payment_count, type: integer, description: "Number of payment records (an order can be paid in several parts)."}
+      - {name: payment_total, type: numeric, description: "Sum of payment values. NULL for the one order with no payment record."}
+      - {name: max_installments, type: integer, description: "Highest number of installments across the order's payments."}
+      - name: primary_payment_type
+        type: text
+        description: Payment method carrying the largest share of the order's payment value.
+        values: [boleto, credit_card, debit_card, not_defined, voucher]
+      - {name: review_count, type: integer, description: "Number of review records for the order."}
+      - {name: has_review, type: boolean, description: "True when the order has at least one review."}
+      - {name: review_score, type: integer, description: "Score 1-5 of the order's latest review. NULL when not reviewed."}
+      - {name: review_has_comment, type: boolean, description: "True when the latest review includes a written comment."}
+      - {name: review_created_date, type: date, description: "Date the latest review survey was sent."}
+      - {name: review_answered_at, type: timestamp, description: "When the latest review was answered."}
+
+  - name: order_items
+    description: Individual items sold, with product category, seller and order context.
+      Use for product, unit and item-level price questions.
+    grain: One row per order item (order_id, order_item_id). An order with 3 units has 3 rows.
+    primary_key: [order_id, order_item_id]
+    caveats:
+      - Count orders with COUNT(DISTINCT order_id), never COUNT(*).
+      - Contains no delivery or review outcomes; use order_categories or order_sellers so each
+        order is weighted once.
+    columns:
+      - {name: order_id, type: text, description: "Order identifier."}
+      - {name: order_item_id, type: integer, description: "Item sequence number within the order (1, 2, ...)."}
+      - {name: product_id, type: text, description: "Product identifier."}
+      - {name: product_category, type: text, description: "English product category ('uncategorized' when the product has none)."}
+      - {name: seller_id, type: text, description: "Seller who sold this item."}
+      - {name: seller_city, type: text, description: "Seller city (lowercase)."}
+      - {name: seller_state, type: text, description: "Seller state code."}
+      - {name: shipping_limit_at, type: timestamp, description: "Deadline for the seller to hand the item to the carrier."}
+      - {name: price, type: numeric, description: "Item price, excluding freight."}
+      - {name: freight_value, type: numeric, description: "Freight charged for this item."}
+      - {name: item_total_value, type: numeric, description: "price + freight_value."}
+      - {name: revenue, type: numeric, description: "price when the order is a revenue order; NULL otherwise."}
+      - {name: order_status, type: text, description: "Status of the parent order."}
+      - {name: is_delivered, type: boolean, description: "Parent order is delivered."}
+      - {name: is_canceled, type: boolean, description: "Parent order is canceled."}
+      - {name: is_revenue_order, type: boolean, description: "Parent order counts toward revenue."}
+      - {name: purchased_at, type: timestamp, description: "Parent order purchase timestamp."}
+      - {name: purchase_date, type: date, description: "Parent order purchase date."}
+      - {name: purchase_month, type: date, description: "First day of the parent order's purchase month."}
+      - {name: customer_unique_id, type: text, description: "Real customer who bought the item."}
+      - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
+
+  - name: order_sellers
+    description: Each seller's part of an order. Use for seller performance over time or by
+      region (revenue, delivery, reviews by seller).
+    grain: One row per (order_id, seller_id).
+    primary_key: [order_id, seller_id]
+    caveats:
+      - Money columns cover only this seller's items.
+      - Delivery and review outcomes belong to the whole order and are attributed in full to each
+        seller on it (1,278 orders have more than one seller).
+    columns:
+      - {name: order_id, type: text, description: "Order identifier."}
+      - {name: seller_id, type: text, description: "Seller identifier."}
+      - {name: seller_city, type: text, description: "Seller city (lowercase)."}
+      - {name: seller_state, type: text, description: "Seller state code."}
+      - {name: item_count, type: integer, description: "Items this seller sold on the order."}
+      - {name: item_price_total, type: numeric, description: "Price of this seller's items on the order, all statuses."}
+      - {name: freight_total, type: numeric, description: "Freight on this seller's items."}
+      - {name: revenue, type: numeric, description: "This seller's item price total for revenue orders; NULL otherwise."}
+      - {name: order_seller_count, type: integer, description: "Number of sellers on the whole order."}
+      - {name: order_status, type: text, description: "Order status."}
+      - {name: is_delivered, type: boolean, description: "Order is delivered."}
+      - {name: is_canceled, type: boolean, description: "Order is canceled."}
+      - {name: is_revenue_order, type: boolean, description: "Order counts toward revenue."}
+      - {name: purchased_at, type: timestamp, description: "Order purchase timestamp."}
+      - {name: purchase_date, type: date, description: "Order purchase date."}
+      - {name: purchase_month, type: date, description: "First day of the order's purchase month."}
+      - {name: customer_unique_id, type: text, description: "Real customer on the order."}
+      - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
+      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status)."}
+      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable."}
+      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable."}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable."}
+      - {name: has_review, type: boolean, description: "Order has a review."}
+      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed."}
+
+  - name: order_categories
+    description: Each product category's part of an order. Use for category performance over
+      time or by region (revenue, delivery, reviews by category).
+    grain: One row per (order_id, product_category).
+    primary_key: [order_id, product_category]
+    caveats:
+      - Money columns cover only this category's items.
+      - Delivery and review outcomes belong to the whole order and are attributed in full to each
+        category on it.
+    columns:
+      - {name: order_id, type: text, description: "Order identifier."}
+      - {name: product_category, type: text, description: "English product category ('uncategorized' when unknown)."}
+      - {name: item_count, type: integer, description: "Items in this category on the order."}
+      - {name: item_price_total, type: numeric, description: "Price of this category's items on the order, all statuses."}
+      - {name: freight_total, type: numeric, description: "Freight on this category's items."}
+      - {name: revenue, type: numeric, description: "This category's item price total for revenue orders; NULL otherwise."}
+      - {name: order_category_count, type: integer, description: "Number of distinct categories on the whole order."}
+      - {name: order_status, type: text, description: "Order status."}
+      - {name: is_delivered, type: boolean, description: "Order is delivered."}
+      - {name: is_canceled, type: boolean, description: "Order is canceled."}
+      - {name: is_revenue_order, type: boolean, description: "Order counts toward revenue."}
+      - {name: purchased_at, type: timestamp, description: "Order purchase timestamp."}
+      - {name: purchase_date, type: date, description: "Order purchase date."}
+      - {name: purchase_month, type: date, description: "First day of the order's purchase month."}
+      - {name: customer_unique_id, type: text, description: "Real customer on the order."}
+      - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
+      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status)."}
+      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable."}
+      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable."}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable."}
+      - {name: has_review, type: boolean, description: "Order has a review."}
+      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed."}
+
+  - name: order_payments
+    description: Individual payment records. Use for payment method and installment questions.
+    grain: One row per payment record (order_id, payment_sequential).
+    primary_key: [order_id, payment_sequential]
+    caveats:
+      - Count orders with COUNT(DISTINCT order_id); 2,961 orders have several payment records.
+      - Payment value includes freight and, for some installment plans, interest, so it can
+        differ slightly from order_total_value.
+    columns:
+      - {name: order_id, type: text, description: "Order identifier."}
+      - {name: payment_sequential, type: integer, description: "Sequence number of the payment within the order."}
+      - name: payment_type
+        type: text
+        description: Payment method.
+        values: [boleto, credit_card, debit_card, not_defined, voucher]
+      - {name: payment_installments, type: integer, description: "Number of installments chosen."}
+      - {name: payment_value, type: numeric, description: "Amount of this payment."}
+      - {name: order_status, type: text, description: "Status of the paid order."}
+      - {name: is_revenue_order, type: boolean, description: "The paid order counts toward revenue."}
+      - {name: purchased_at, type: timestamp, description: "Order purchase timestamp."}
+      - {name: purchase_date, type: date, description: "Order purchase date."}
+      - {name: purchase_month, type: date, description: "First day of the order's purchase month."}
+      - {name: customer_unique_id, type: text, description: "Real customer who paid."}
+      - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
+
+  - name: customers
+    description: One row per real customer with lifetime order counts and revenue.
+    grain: One row per customer (customer_unique_id).
+    primary_key: [customer_unique_id]
+    caveats:
+      - Location is from the customer's most recent order (39 customers ordered from more than one state).
+    columns:
+      - {name: customer_unique_id, type: text, description: "Real customer identifier."}
+      - {name: customer_city, type: text, description: "City of the customer's most recent order."}
+      - {name: customer_state, type: text, description: "State code of the customer's most recent order."}
+      - {name: order_count, type: integer, description: "Orders placed, all statuses."}
+      - {name: delivered_order_count, type: integer, description: "Delivered orders."}
+      - {name: revenue_order_count, type: integer, description: "Orders that count toward revenue."}
+      - {name: total_revenue, type: numeric, description: "Lifetime revenue from this customer (0 if none)."}
+      - {name: first_order_at, type: timestamp, description: "First purchase timestamp."}
+      - {name: last_order_at, type: timestamp, description: "Most recent purchase timestamp."}
+      - {name: is_repeat_customer, type: boolean, description: "True when the customer has at least two delivered orders."}
+
+  - name: sellers
+    description: One row per seller with a lifetime scorecard.
+    grain: One row per seller (seller_id).
+    primary_key: [seller_id]
+    caveats:
+      - Rates and averages computed on few orders are unreliable; for rankings prefer sellers with
+        has_min_20_delivered_orders and state that filter.
+      - For time-bounded seller questions use order_sellers instead of these lifetime totals.
+    columns:
+      - {name: seller_id, type: text, description: "Seller identifier."}
+      - {name: seller_city, type: text, description: "Seller city (lowercase)."}
+      - {name: seller_state, type: text, description: "Seller state code."}
+      - {name: order_count, type: integer, description: "Orders containing this seller's items, all statuses."}
+      - {name: delivered_order_count, type: integer, description: "Delivered orders containing this seller's items."}
+      - {name: units_sold, type: integer, description: "Items sold in revenue orders."}
+      - {name: total_revenue, type: numeric, description: "Lifetime revenue (this seller's items in revenue orders)."}
+      - {name: comparable_delivery_count, type: integer, description: "Delivered orders with a delivery date (denominator of late_delivery_rate)."}
+      - {name: late_delivery_count, type: integer, description: "Orders delivered late."}
+      - {name: late_delivery_rate, type: numeric, description: "late_delivery_count / comparable_delivery_count (0-1). NULL when no comparable deliveries."}
+      - {name: average_delivery_days, type: numeric, description: "Average purchase-to-delivery days of the seller's delivered orders."}
+      - {name: reviewed_order_count, type: integer, description: "Orders with a review."}
+      - {name: average_review_score, type: numeric, description: "Average latest review score of the seller's orders."}
+      - {name: first_order_at, type: timestamp, description: "First order timestamp."}
+      - {name: last_order_at, type: timestamp, description: "Most recent order timestamp."}
+      - {name: has_min_20_delivered_orders, type: boolean, description: "True when the seller has at least 20 delivered orders."}
+
+  - name: products
+    description: One row per product with category, physical attributes and lifetime sales.
+    grain: One row per product (product_id).
+    primary_key: [product_id]
+    caveats:
+      - Product names are not available in the dataset, only IDs, categories and attributes.
+      - For time-bounded product questions use order_items instead of these lifetime totals.
+    columns:
+      - {name: product_id, type: text, description: "Product identifier."}
+      - {name: product_category, type: text, description: "English product category ('uncategorized' for 610 products without one)."}
+      - name: category_translation_source
+        type: text
+        description: Where the English category name comes from.
+        values: [olist, project, uncategorized]
+      - {name: product_name_length, type: integer, description: "Characters in the product name. NULL when unknown."}
+      - {name: product_description_length, type: integer, description: "Characters in the product description. NULL when unknown."}
+      - {name: photo_count, type: integer, description: "Number of product photos. NULL when unknown."}
+      - {name: weight_g, type: integer, description: "Weight in grams."}
+      - {name: length_cm, type: integer, description: "Length in centimetres."}
+      - {name: height_cm, type: integer, description: "Height in centimetres."}
+      - {name: width_cm, type: integer, description: "Width in centimetres."}
+      - {name: units_sold, type: integer, description: "Units sold in revenue orders."}
+      - {name: order_count, type: integer, description: "Revenue orders containing the product."}
+      - {name: total_revenue, type: numeric, description: "Lifetime revenue from the product."}
+
+# Metrics. `expression` is valid SQL against `relation` (e.g. SELECT <expression> FROM analytics.<relation>).
+# `variants` give the same metric at other grains; their totals must equal the primary expression.
+metrics:
+  - name: order_count
+    label: Orders
+    definition: Number of orders placed, all statuses, unless the question restricts the status.
+    relation: orders
+    expression: COUNT(*)
+    unit: orders
+    exclusions: []
+    caveats:
+      - On item, seller, category or payment grains count orders with COUNT(DISTINCT order_id).
+    aliases: [orders, number of orders, order volume, total orders, purchases]
+
+  - name: delivered_order_count
+    label: Delivered orders
+    definition: Orders with status delivered.
+    relation: orders
+    expression: COUNT(*) FILTER (WHERE is_delivered)
+    unit: orders
+    exclusions: [All statuses other than delivered.]
+    caveats:
+      - Eight delivered orders have no delivery date; they count here but not in delivery-time metrics.
+    aliases: [delivered orders, completed orders, fulfilled orders]
+
+  - name: canceled_order_count
+    label: Canceled orders
+    definition: Orders with status canceled.
+    relation: orders
+    expression: COUNT(*) FILTER (WHERE is_canceled)
+    unit: orders
+    exclusions: ["'unavailable' orders (609) are not counted as canceled."]
+    caveats:
+      - Six canceled orders still have a customer delivery date; status is treated as authoritative.
+    aliases: [cancelled orders, canceled orders, cancellations]
+
+  - name: cancellation_rate
+    label: Cancellation rate
+    definition: Share of all orders whose status is canceled.
+    relation: orders
+    expression: (COUNT(*) FILTER (WHERE is_canceled))::numeric / NULLIF(COUNT(*), 0)
+    numerator: COUNT(*) FILTER (WHERE is_canceled)
+    denominator: COUNT(*)
+    unit: ratio
+    exclusions: ["'unavailable' orders are in the denominator but not the numerator."]
+    caveats: []
+    aliases: [cancellation rate, cancel rate, percentage of orders canceled]
+
+  - name: revenue
+    label: Revenue
+    definition: Sum of item prices, excluding freight, for orders that are not canceled or
+      unavailable and that contain at least one item.
+    relation: orders
+    expression: SUM(revenue)
+    variants:
+      - {relation: order_items, expression: SUM(revenue)}
+      - {relation: order_sellers, expression: SUM(revenue)}
+      - {relation: order_categories, expression: SUM(revenue)}
+    unit: BRL
+    exclusions:
+      - Freight (see freight_value).
+      - Orders with status canceled or unavailable.
+      - Orders without items.
+    caveats:
+      - Includes orders not yet delivered (shipped, invoiced, processing, approved); filter
+        is_delivered for delivered revenue.
+      - Revenue is booked on the purchase date, not the delivery date.
+    rationale: Item price is the only money measure that can be attributed exactly to products,
+      categories and sellers, so revenue adds up the same way at every grain. Payments include
+      freight and installment interest and cannot be split by item.
+    aliases: [revenue, sales, sales value, gmv, gross merchandise value, merchandise revenue, product revenue]
+
+  - name: average_order_value
+    label: Average order value
+    definition: Revenue divided by the number of revenue orders.
+    relation: orders
+    expression: AVG(revenue)
+    numerator: SUM(revenue)
+    denominator: COUNT(revenue)
+    unit: BRL
+    exclusions: [Freight., Canceled and unavailable orders., Orders without items.]
+    caveats:
+      - AVG(revenue) ignores NULLs, which is exactly the revenue-order population.
+    aliases: [aov, average order value, average basket, average ticket, average order size]
+
+  - name: items_sold
+    label: Items sold
+    definition: Number of item units in revenue orders.
+    relation: order_items
+    expression: COUNT(revenue)
+    variants:
+      - {relation: orders, expression: SUM(item_count) FILTER (WHERE is_revenue_order)}
+      - {relation: order_sellers, expression: SUM(item_count) FILTER (WHERE is_revenue_order)}
+      - {relation: order_categories, expression: SUM(item_count) FILTER (WHERE is_revenue_order)}
+    unit: items
+    exclusions: [Items in canceled or unavailable orders.]
+    caveats:
+      - Each order_items row is one unit; there is no quantity column.
+    aliases: [items sold, units sold, units, quantity sold, volume]
+
+  - name: freight_value
+    label: Freight value
+    definition: Freight charged on items in revenue orders.
+    relation: orders
+    expression: SUM(freight_total) FILTER (WHERE is_revenue_order)
+    variants:
+      - {relation: order_items, expression: SUM(freight_value) FILTER (WHERE is_revenue_order)}
+    unit: BRL
+    exclusions: [Canceled and unavailable orders.]
+    caveats: [Reported separately from revenue.]
+    aliases: [freight, shipping cost, shipping fees, delivery charges]
+
+  - name: total_order_value
+    label: Total order value
+    definition: Item prices plus freight for revenue orders (what the customer was charged
+      before payment-plan effects).
+    relation: orders
+    expression: SUM(order_total_value) FILTER (WHERE is_revenue_order)
+    unit: BRL
+    exclusions: [Canceled and unavailable orders.]
+    caveats:
+      - Not the canonical revenue; use only when the question includes shipping.
+    aliases: [total order value, order value including freight, gross order value, total charged]
+
+  - name: payment_value
+    label: Payment value
+    definition: Sum of payment records for revenue orders.
+    relation: orders
+    expression: SUM(payment_total) FILTER (WHERE is_revenue_order)
+    variants:
+      - {relation: order_payments, expression: SUM(payment_value) FILTER (WHERE is_revenue_order)}
+    unit: BRL
+    exclusions: [Canceled and unavailable orders.]
+    caveats:
+      - Matches item price plus freight to the cent for 99.7% of orders; the rest differ by
+        installment interest or vouchers.
+    aliases: [payments, amount paid, payment value, payments received]
+
+  - name: customer_count
+    label: Customers
+    definition: Number of distinct real customers (customer_unique_id).
+    relation: customers
+    expression: COUNT(*)
+    variants:
+      - {relation: orders, expression: COUNT(DISTINCT customer_unique_id)}
+    unit: customers
+    exclusions: []
+    caveats:
+      - Never count customer_id from the source data; it is per order.
+    aliases: [customers, number of customers, unique customers, buyers, shoppers]
+
+  - name: average_review_score
+    label: Average review score
+    definition: Mean score (1-5) of each reviewed order's latest review.
+    relation: orders
+    expression: AVG(review_score)
+    unit: score
+    exclusions: [Orders without a review.]
+    caveats:
+      - Order-weighted, not review-row-weighted; 547 orders have several review rows.
+    aliases: [average rating, average review, review score, customer satisfaction score, csat]
+
+  - name: low_rating_rate
+    label: Low rating rate
+    definition: Share of reviewed orders whose latest review scored 1 or 2.
+    relation: orders
+    expression: (COUNT(*) FILTER (WHERE review_score <= 2))::numeric / NULLIF(COUNT(review_score), 0)
+    numerator: COUNT(*) FILTER (WHERE review_score <= 2)
+    denominator: COUNT(review_score)
+    unit: ratio
+    exclusions: [Orders without a review.]
+    caveats: []
+    aliases: [low rating rate, negative review rate, bad review rate, share of 1-2 star reviews]
+
+  - name: late_delivery_rate
+    label: Late delivery rate
+    definition: Share of delivered orders (with a delivery date) that arrived after the
+      estimated delivery date, compared by calendar date.
+    relation: orders
+    expression: (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0)
+    numerator: COUNT(*) FILTER (WHERE is_late)
+    denominator: COUNT(is_late)
+    unit: ratio
+    exclusions: [Orders not delivered., Delivered orders missing a delivery date (8).]
+    caveats:
+      - Delivery on the estimated date counts as on time.
+    aliases: [late delivery rate, late rate, delay rate, percentage delivered late, on-time delivery (1 minus this)]
+
+  - name: average_delivery_days
+    label: Average delivery time
+    definition: Mean days from purchase to customer delivery for delivered orders.
+    relation: orders
+    expression: AVG(delivery_days)
+    unit: days
+    exclusions: [Orders not delivered., Delivered orders missing a delivery date.]
+    caveats:
+      - Delivery times are right-skewed; the median (percentile_cont(0.5)) is often more representative.
+    aliases: [average delivery time, delivery time, days to deliver, shipping time, lead time]
+
+  - name: repeat_customer_rate
+    label: Repeat customer rate
+    definition: Share of customers with at least one delivered order who have at least two
+      delivered orders.
+    relation: customers
+    expression: (COUNT(*) FILTER (WHERE is_repeat_customer))::numeric / NULLIF(COUNT(*) FILTER (WHERE delivered_order_count >= 1), 0)
+    numerator: COUNT(*) FILTER (WHERE is_repeat_customer)
+    denominator: COUNT(*) FILTER (WHERE delivered_order_count >= 1)
+    unit: ratio
+    exclusions: [Customers with no delivered order.]
+    caveats:
+      - Uses customer_unique_id; per-order customer IDs would make every customer look new.
+    aliases: [repeat customer rate, repeat purchase rate, returning customer rate, retention rate]

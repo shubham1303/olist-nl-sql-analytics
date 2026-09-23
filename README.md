@@ -4,8 +4,8 @@ Ask business questions about the [Olist Brazilian E-Commerce dataset][olist] in 
 English and get back a table, an automatically selected chart, the SQL that produced
 it, and the metric definitions and assumptions used.
 
-> **Status:** Phase 0 (scaffold). See [plan.md](plan.md) for the roadmap and
-> [docs/adr/](docs/adr/README.md) for the architecture decisions.
+> **Status:** Phase 1 complete (local data + curated analytics layer). See [plan.md](plan.md)
+> for the roadmap and [docs/adr/](docs/adr/README.md) for the architecture decisions.
 
 ## Architecture (target)
 
@@ -19,10 +19,11 @@ verified 50-question benchmark with a 20-question held-out split.
 
 | Path | Contents |
 |---|---|
-| `backend/` | Python 3.13 package `olist_nlsql` (uv, ruff, mypy, pytest) |
+| `backend/` | Python 3.13 package `olist_nlsql` (uv, ruff, mypy, pytest), including the analytics catalog and database tooling |
 | `frontend/` | Vite + React + TypeScript (oxlint, Vitest) |
 | `infra/main/` | Terraform root configuration |
-| `docs/adr/` | Architecture Decision Records |
+| `docs/` | [Data model](docs/data-model.md), [metrics](docs/metrics.md), [local database](docs/local-database.md), [ADRs](docs/adr/README.md) |
+| `docker-compose.yml` | Local PostgreSQL 16 |
 | `.github/workflows/` | CI |
 
 ## Prerequisites
@@ -30,7 +31,7 @@ verified 50-question benchmark with a 20-question held-out split.
 - [uv](https://docs.astral.sh/uv/) (installs Python 3.13 automatically)
 - Node.js 24 LTS (see `.nvmrc`)
 - Terraform ≥ 1.10
-- Docker (from Phase 1)
+- Docker
 
 ## Common commands
 
@@ -42,7 +43,17 @@ uv run ruff check .        # lint
 uv run ruff format .       # format
 uv run mypy                # type check (strict)
 uv run pytest              # unit tests (excludes integration and live)
-uv run pytest -m integration   # needs Docker Postgres (Phase 1+)
+uv run pytest -m integration   # needs the local database (below)
+```
+
+Local database (full guide: [docs/local-database.md](docs/local-database.md)):
+
+```sh
+cp .env.example .env                              # fill in passwords
+docker compose up -d --wait
+cd backend
+uv run python -m olist_nlsql.dbsetup download     # Kaggle, SHA-256 verified
+uv run python -m olist_nlsql.dbsetup build        # raw data + analytics views
 ```
 
 Frontend (`cd frontend`):

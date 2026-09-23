@@ -35,6 +35,55 @@ jobs:
       - name: Unit tests
         run: uv run pytest
 
+  database:
+    # Builds the full raw + analytics database and runs the integration suite.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-superuser
+          POSTGRES_DB: olist
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d olist"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      # Throwaway credentials for an ephemeral CI container; not secrets.
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-only-superuser
+      POSTGRES_DB: olist
+      NLSQL_OWNER_PASSWORD: ci-only-owner
+      NLSQL_READER_PASSWORD: ci-only-reader
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Cache Olist dataset
+        id: dataset
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: olist-${{ hashFiles('backend/src/olist_nlsql/dbsetup/dataset.py') }}
+      - name: Install
+        run: uv sync --locked
+      - name: Download dataset
+        if: steps.dataset.outputs.cache-hit != 'true'
+        run: uv run python -m olist_nlsql.dbsetup download
+      - name: Build database
+        run: uv run python -m olist_nlsql.dbsetup build
+      - name: Integration tests
+        run: uv run pytest -m integration
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

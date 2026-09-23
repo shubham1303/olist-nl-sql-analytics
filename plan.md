@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 0 in progress.** Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phase 1 complete; Phase 2 not started.** Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-09-23
 
 ---
@@ -77,21 +77,21 @@ olist-nl-sql/
 │   ├── adr/                    # decisions (0001–0009)
 │   ├── architecture.md         # Phase 9
 │   ├── security.md             # Phase 2
-│   └── data-notes.md           # Phase 1: Olist pitfalls, metric rationale
-├── data/                       # Phase 1
-│   ├── download.py             # raw data NOT committed (CC BY-NC-SA 4.0)
-│   ├── sql/001_raw.sql, 002_analytics_views.sql, 003_roles.sql
-│   ├── load_local.py
-│   └── load_aws.py             # S3 upload + aws_s3.table_import_from_s3 via Data API
-├── docker-compose.yml          # Phase 1
+│   ├── data-model.md           # raw → analytics design, grains, data-quality caveats
+│   ├── metrics.md              # metric definitions and the revenue decision
+│   └── local-database.md       # Docker Postgres commands, roles, build steps
+├── data/raw/                   # downloaded CSVs — git-ignored (CC BY-NC-SA 4.0)
+├── docker-compose.yml          # local Postgres 16, loopback only
+├── .env.example                # credentials template (.env is git-ignored)
 ├── backend/
 │   ├── pyproject.toml, uv.lock
 │   ├── src/olist_nlsql/
 │   │   ├── config.py           # the ONLY place defaults (incl. model ID) live
 │   │   ├── service.py          # orchestration                          (Phase 3)
-│   │   ├── catalog/            # catalog.yaml + loader → prompt + allowlist (Phase 2)
+│   │   ├── catalog/            # catalog.yaml + strict loader (done); prompt + allowlist generation (Phase 2 / 3)
+│   │   ├── dbsetup/            # dataset download/verify, build CLI, sql/010–040 (done)
 │   │   ├── sqlsafety/          # validator, policy                      (Phase 2)
-│   │   ├── db/                 # executor protocol, postgres, data_api   (Phase 2 / 7)
+│   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
 │   │   ├── llm/                # protocol, bedrock, fake, prompts        (Phase 3)
 │   │   ├── api/                # lambda_handler, local_app (dev only)     (Phase 6 / 7)
 │   │   └── evaluation/         # runner, compare, report                 (Phase 4)
@@ -116,8 +116,8 @@ A phase is done only when its milestone is met and CI is green.
 | # | Phase | Deliverables | Milestone |
 |---|---|---|---|
 | 0 | **Scaffold** | ADRs; repo skeleton; backend project (uv, ruff, mypy, pytest, config module); Vite React TS app with Vitest; Terraform root skeleton; `ci.yml`; README | All local checks that CI runs pass: backend lint/format/types/tests, frontend lint/types/tests/build, `terraform fmt`/`validate` |
-| 1 | **Data foundation (local)** | `docker-compose.yml`; download script; `raw` schema + load; curated `analytics` views; `analytics_reader` role; `data-notes.md`; integration tests in CI (Postgres service) | Role tests prove no writes/DDL/raw access/read-only escape; spot-check queries on views cross-checked against raw-table computations |
-| 2 | **Catalog + SQL safety** | `catalog.yaml` + loader; drift test (catalog ↔ DB); validator with rejection codes/messages; `PostgresExecutor`; executor contract suite; attack corpus; `security.md` | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
+| 1 ✅ | **Data foundation (local)** | `docker-compose.yml`; pinned-checksum download; `raw` schema + load; 8 curated `analytics` views; `analytics_reader` role; initial `catalog.yaml` + drift test; `QueryExecutor` + `PostgresExecutor`; data-model / metrics / local-database docs; integration job in CI | **Met:** 168 integration tests pass from a clean volume; role tests prove no writes/DDL/raw access even with read-only disabled; revenue identical across all views and equal to an independent CSV recomputation; audit control totals reconcile exactly |
+| 2 | **SQL safety** | Allowlist generated from the catalog; validator with rejection codes/messages; executor contract suite (reusable for Data API); attack corpus; `security.md` | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
 | 3 | **NL→SQL core** | `LlmClient` protocol + Bedrock client + fake; prompt built from catalog; service with ≤ 1 repair; CLI `ask "…"`; live smoke test | End-to-end answers locally for a handful of sample questions; unit tests cover happy / repair / give-up paths |
 | 4 | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | Baseline report committed with stage metrics for dev; one held-out checkpoint run recorded |
 | 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
@@ -181,7 +181,19 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ---
 
-## 9. Phase 0 checklist
+## 9. Progress log
+
+### Phase 1 (done, 2026-09-23)
+
+- Dataset pinned by per-file SHA-256; Kaggle archive hash matches the earlier independent audit.
+- `dbsetup build` rebuilds everything in ~5 s; `dbsetup views` rebuilds the analytics layer only.
+- 8 views: orders, order_items, order_sellers, order_categories, order_payments, customers, sellers, products (grains in [docs/data-model.md](docs/data-model.md)).
+- 16 catalog metrics, every one executed and value-checked by tests ([docs/metrics.md](docs/metrics.md)).
+- Canonical revenue = item price for non-canceled/unavailable orders with items (R$13,494,400.74).
+- Found and fixed: `localhost` → IPv6 stall on Windows (use 127.0.0.1); `views` not dropping `analytics_internal`; PUBLIC could connect to the `postgres` database.
+- Integration CI job written but not yet run on GitHub (no remote).
+
+### Phase 0 checklist
 
 - [x] ADRs 0001–0009
 - [x] plan.md updated

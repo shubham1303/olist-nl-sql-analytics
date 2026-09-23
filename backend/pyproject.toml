@@ -4,13 +4,23 @@ version = "0.1.0"
 description = "Natural-language-to-SQL analytics over the Olist e-commerce dataset"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Local PostgreSQL driver. Not needed in AWS, where the RDS Data API is used (ADR 0001).
+postgres = [
+    "psycopg[binary]>=3.2",
+]
 
 [dependency-groups]
 dev = [
+    "olist-nlsql[postgres]",
     "mypy>=1.13",
     "pytest>=8.3",
     "ruff>=0.8",
+    "types-pyyaml>=6.0",
 ]
 
 [build-system]
@@ -34,7 +44,9 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]  # assert is fine in tests
+# Tests: assert is expected; SQL is built from trusted catalog/view names (S608); long
+# SQL literals cannot be wrapped by the formatter (E501).
+"tests/**" = ["S101", "S608", "E501"]
 
 [tool.mypy]
 strict = true

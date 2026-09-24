@@ -18,5 +18,7 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0011](0011-review-and-outcome-attribution.md) | Latest review per order; full outcome attribution in seller/category views | Accepted |
 | [0012](0012-category-translation-provenance.md) | Category translations: raw unchanged, corrections in the curated layer with provenance | Accepted |
 | [0013](0013-recommended-time-window.md) | 2017-01 to 2018-08 is a recommended window, not an automatic filter | Accepted |
+| [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted |
+| [0015](0015-model-visible-relations.md) | The model sees fact views and product attributes; lifetime summaries are hidden | Accepted |
 
 Template: [template.md](template.md)

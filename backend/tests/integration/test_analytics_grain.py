@@ -27,9 +27,9 @@ def test_every_relation_has_an_expected_row_count() -> None:
 
 
 @pytest.mark.parametrize("relation", RELATIONS, ids=lambda r: r.name)
-def test_primary_key_is_unique_and_not_null(reader: Conn, relation: Relation) -> None:
-    key = ", ".join(relation.primary_key)
-    not_null = " AND ".join(f"{c} IS NOT NULL" for c in relation.primary_key)
+def test_grain_key_is_unique_and_not_null(reader: Conn, relation: Relation) -> None:
+    key = ", ".join(relation.grain_key)
+    not_null = " AND ".join(f"{c} IS NOT NULL" for c in relation.grain_key)
     rows, distinct_keys, complete = row(
         reader,
         f"""SELECT count(*), count(DISTINCT ({key})), count(*) FILTER (WHERE {not_null})

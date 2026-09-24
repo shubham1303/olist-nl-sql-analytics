@@ -63,15 +63,16 @@ orders.
 | `freight_value` | Freight, revenue orders | `SUM(freight_total) FILTER (WHERE is_revenue_order)` | R$2,241,126.29 |
 | `total_order_value` | Price + freight, revenue orders | `SUM(order_total_value) FILTER (…)` | R$15,735,527.03 |
 | `payment_value` | Payments, revenue orders | `SUM(payment_total) FILTER (…)` | R$15,738,221.95 |
-| `customer_count` | Distinct real customers | `COUNT(*)` (customers) | 96,096 |
+| `customer_count` | Distinct real customers | `COUNT(DISTINCT customer_unique_id)` (orders) | 96,096 |
 | `average_review_score` | Mean latest-review score per reviewed order | `AVG(review_score)` | 4.0864 † |
 | `low_rating_rate` | Latest review 1–2 ÷ reviewed orders | 14,494 ÷ 98,673 † | 14.69% |
 | `late_delivery_rate` | Late ÷ delivered orders with a delivery date | 6,534 ÷ 96,470 † | 6.77% |
 | `average_delivery_days` | Mean purchase → delivery days | `AVG(delivery_days)` | 12.56 days |
-| `repeat_customer_rate` | Customers with ≥ 2 delivered orders ÷ those with ≥ 1 | 2,801 ÷ 93,358 † | 3.00% |
+| `repeat_customer_rate` | Customers with ≥ 2 delivered orders ÷ those with ≥ 1 | catalog query over orders; 2,801 ÷ 93,358 † | 3.00% |
 
-The catalog also gives each metric its exclusions, caveats and aliases, and for ratios
-the numerator and denominator. Metrics that make sense at other grains list
+Every metric's SQL passes the SQL validator, and a test checks this. The catalog
+also gives each metric its exclusions, caveats and aliases, and for ratios the
+numerator and denominator. Metrics that make sense at other grains list
 **variants**, such as `revenue` on `order_categories` or `items_sold` on `orders`. The
 tests check that each variant returns exactly the primary value.
 
@@ -93,8 +94,9 @@ tests check that each variant returns exactly the primary value.
   they exceed the number of unique orders, so overall counts and rates come from `orders`. The
   `sellers` scorecard uses those definitions, and a test checks that its
   `late_delivery_rate` matches.
-- **Small samples:** `sellers.has_min_20_delivered_orders` marks the 804 sellers with
-  enough history for a fair ranking.
+- **Small samples:** for seller rankings, require enough history, for example
+  `HAVING COUNT(*) FILTER (WHERE is_delivered) >= 20` on `order_sellers` (804 sellers
+  qualify). The lifetime `sellers` view is hidden from the model (ADR 0015).
 
 ## Terms the catalog does not define
 

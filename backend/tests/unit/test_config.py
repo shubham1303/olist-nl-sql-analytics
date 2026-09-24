@@ -20,6 +20,8 @@ def test_env_overrides() -> None:
             "NLSQL_MAX_QUESTION_CHARS": "300",
             "NLSQL_MAX_REQUEST_BYTES": "2048",
             "NLSQL_MAX_RESULT_ROWS": "250",
+            "NLSQL_MAX_SQL_CHARS": "4000",
+            "NLSQL_MAX_JOINS": "3",
         }
     )
     assert settings == Settings(
@@ -29,6 +31,8 @@ def test_env_overrides() -> None:
         max_question_chars=300,
         max_request_bytes=2048,
         max_result_rows=250,
+        max_sql_chars=4000,
+        max_joins=3,
     )
 
 

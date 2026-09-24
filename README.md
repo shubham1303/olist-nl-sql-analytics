@@ -4,7 +4,7 @@ Ask business questions about the [Olist Brazilian E-Commerce dataset][olist] in 
 English and get back a table, an automatically selected chart, the SQL that produced
 it, and the metric definitions and assumptions used.
 
-> **Status:** Phase 1 complete (local data + curated analytics layer). See [plan.md](plan.md)
+> **Status:** Phase 2 complete (local data, curated analytics layer, SQL safety validator). See [plan.md](plan.md)
 > for the roadmap and [docs/adr/](docs/adr/README.md) for the architecture decisions.
 
 ## Architecture (target)
@@ -22,7 +22,7 @@ verified 50-question benchmark with a 20-question held-out split.
 | `backend/` | Python 3.13 package `olist_nlsql` (uv, ruff, mypy, pytest), including the analytics catalog and database tooling |
 | `frontend/` | Vite + React + TypeScript (oxlint, Vitest) |
 | `infra/main/` | Terraform root configuration |
-| `docs/` | [Data model](docs/data-model.md), [metrics](docs/metrics.md), [local database](docs/local-database.md), [ADRs](docs/adr/README.md) |
+| `docs/` | [Data model](docs/data-model.md), [metrics](docs/metrics.md), [SQL safety](docs/sql-safety.md), [local database](docs/local-database.md), [ADRs](docs/adr/README.md) |
 | `docker-compose.yml` | Local PostgreSQL 16 |
 | `.github/workflows/` | CI |
 

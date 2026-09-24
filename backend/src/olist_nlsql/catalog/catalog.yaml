@@ -6,6 +6,8 @@
 # and execute every metric expression against the database.
 #
 # Column types are logical: text | integer | numeric | boolean | date | timestamp.
+# Relations with `exposed: false` (and columns with `exposed: false`) are documented and
+# drift-tested, but are invisible to the model and rejected by the validator (ADR 0015).
 
 version: 1
 
@@ -41,10 +43,11 @@ glossary:
 
 relations:
   - name: orders
+    exposed: true
     description: Order header with status, dates, delivery outcome, money totals and the
       order's latest review. The main table for order-level questions.
     grain: One row per order.
-    primary_key: [order_id]
+    grain_key: [order_id]
     caveats:
       - Money columns cover all statuses; use revenue (NULL outside the revenue population)
         or filter is_revenue_order for sales figures.
@@ -97,10 +100,11 @@ relations:
       - {name: review_answered_at, type: timestamp, description: "When the latest review was answered."}
 
   - name: order_items
+    exposed: true
     description: Individual items sold, with product category, seller and order context.
       Use for product, unit and item-level price questions.
     grain: One row per order item (order_id, order_item_id). An order with 3 units has 3 rows.
-    primary_key: [order_id, order_item_id]
+    grain_key: [order_id, order_item_id]
     caveats:
       - Count orders with COUNT(DISTINCT order_id), never COUNT(*).
       - Contains no delivery or review outcomes; use order_categories or order_sellers so each
@@ -129,15 +133,19 @@ relations:
       - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
 
   - name: order_sellers
+    exposed: true
     description: Each seller's part of an order. Use for seller performance over time or by
       region (revenue, delivery, reviews by seller).
     grain: One row per (order_id, seller_id).
-    primary_key: [order_id, seller_id]
+    grain_key: [order_id, seller_id]
+    attribution_key: [seller_id]
     caveats:
       - Money columns cover only this seller's items.
       - Delivery and review outcomes belong to the whole order and are attributed in full to each
         seller on it (1,278 orders have more than one seller), so outcome counts summed across
         sellers exceed the number of unique orders. Use orders for overall outcome counts or rates.
+      - For seller rankings require enough history, e.g. HAVING COUNT(*) FILTER (WHERE is_delivered)
+        >= 20, and state that threshold as an assumption.
     columns:
       - {name: order_id, type: text, description: "Order identifier."}
       - {name: seller_id, type: text, description: "Seller identifier."}
@@ -157,18 +165,20 @@ relations:
       - {name: purchase_month, type: date, description: "First day of the order's purchase month."}
       - {name: customer_unique_id, type: text, description: "Real customer on the order."}
       - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
-      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status)."}
-      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable."}
-      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable."}
-      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable."}
-      - {name: has_review, type: boolean, description: "Order has a review."}
-      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed."}
+      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status).", attributed: true}
+      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable.", attributed: true}
+      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable.", attributed: true}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable.", attributed: true}
+      - {name: has_review, type: boolean, description: "Order has a review.", attributed: true}
+      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed.", attributed: true}
 
   - name: order_categories
+    exposed: true
     description: Each product category's part of an order. Use for category performance over
       time or by region (revenue, delivery, reviews by category).
     grain: One row per (order_id, product_category).
-    primary_key: [order_id, product_category]
+    grain_key: [order_id, product_category]
+    attribution_key: [product_category]
     caveats:
       - Money columns cover only this category's items.
       - Delivery and review outcomes belong to the whole order and are attributed in full to each
@@ -191,17 +201,18 @@ relations:
       - {name: purchase_month, type: date, description: "First day of the order's purchase month."}
       - {name: customer_unique_id, type: text, description: "Real customer on the order."}
       - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
-      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status)."}
-      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable."}
-      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable."}
-      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable."}
-      - {name: has_review, type: boolean, description: "Order has a review."}
-      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed."}
+      - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status).", attributed: true}
+      - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable.", attributed: true}
+      - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable.", attributed: true}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable.", attributed: true}
+      - {name: has_review, type: boolean, description: "Order has a review.", attributed: true}
+      - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed.", attributed: true}
 
   - name: order_payments
+    exposed: true
     description: Individual payment records. Use for payment method and installment questions.
     grain: One row per payment record (order_id, payment_sequential).
-    primary_key: [order_id, payment_sequential]
+    grain_key: [order_id, payment_sequential]
     caveats:
       - Count orders with COUNT(DISTINCT order_id); 2,961 orders have several payment records.
       - Payment value includes freight and, for some installment plans, interest, so it can
@@ -224,9 +235,12 @@ relations:
       - {name: customer_state, type: text, description: "Customer state code at the time of the order."}
 
   - name: customers
+    exposed: false
+    hidden_reason: Lifetime per-customer summary. Its totals ignore any date filter in a question.
+      Use orders (customer_unique_id, customer_state) and aggregate per customer instead.
     description: One row per real customer with lifetime order counts and revenue.
     grain: One row per customer (customer_unique_id).
-    primary_key: [customer_unique_id]
+    grain_key: [customer_unique_id]
     caveats:
       - Location is from the customer's most recent order (39 customers ordered from more than one state).
     columns:
@@ -242,9 +256,12 @@ relations:
       - {name: is_repeat_customer, type: boolean, description: "True when the customer has at least two delivered orders."}
 
   - name: sellers
+    exposed: false
+    hidden_reason: Lifetime seller scorecard. Its totals and rates ignore any date filter in a
+      question. Use order_sellers (or order_items) and aggregate per seller_id instead.
     description: One row per seller with a lifetime scorecard.
     grain: One row per seller (seller_id).
-    primary_key: [seller_id]
+    grain_key: [seller_id]
     caveats:
       - Rates and averages computed on few orders are unreliable; for rankings prefer sellers with
         has_min_20_delivered_orders and state that filter.
@@ -268,12 +285,14 @@ relations:
       - {name: has_min_20_delivered_orders, type: boolean, description: "True when the seller has at least 20 delivered orders."}
 
   - name: products
-    description: One row per product with category, physical attributes and lifetime sales.
+    exposed: true
+    description: One row per product with its category and physical attributes. Join from
+      order_items on product_id for product attributes of items sold.
     grain: One row per product (product_id).
-    primary_key: [product_id]
+    grain_key: [product_id]
     caveats:
       - Product names are not available in the dataset, only IDs, categories and attributes.
-      - For time-bounded product questions use order_items instead of these lifetime totals.
+      - Lifetime sales columns are hidden; compute sales from order_items so date filters apply.
     columns:
       - {name: product_id, type: text, description: "Product identifier."}
       - {name: product_category, type: text, description: "English product category ('uncategorized' for 610 products without one)."}
@@ -288,9 +307,9 @@ relations:
       - {name: length_cm, type: integer, description: "Length in centimetres."}
       - {name: height_cm, type: integer, description: "Height in centimetres."}
       - {name: width_cm, type: integer, description: "Width in centimetres."}
-      - {name: units_sold, type: integer, description: "Units sold in revenue orders."}
-      - {name: order_count, type: integer, description: "Revenue orders containing the product."}
-      - {name: total_revenue, type: numeric, description: "Lifetime revenue from the product."}
+      - {name: units_sold, type: integer, description: "Units sold in revenue orders.", exposed: false}
+      - {name: order_count, type: integer, description: "Revenue orders containing the product.", exposed: false}
+      - {name: total_revenue, type: numeric, description: "Lifetime revenue from the product.", exposed: false}
 
 # Metrics. `expression` is valid SQL against `relation` (e.g. SELECT <expression> FROM analytics.<relation>).
 # `variants` give the same metric at other grains; their totals must equal the primary expression.
@@ -433,10 +452,8 @@ metrics:
   - name: customer_count
     label: Customers
     definition: Number of distinct real customers (customer_unique_id).
-    relation: customers
-    expression: COUNT(*)
-    variants:
-      - {relation: orders, expression: COUNT(DISTINCT customer_unique_id)}
+    relation: orders
+    expression: COUNT(DISTINCT customer_unique_id)
     unit: customers
     exclusions: []
     caveats:
@@ -495,12 +512,109 @@ metrics:
     label: Repeat customer rate
     definition: Share of customers with at least one delivered order who have at least two
       delivered orders.
-    relation: customers
-    expression: (COUNT(*) FILTER (WHERE is_repeat_customer))::numeric / NULLIF(COUNT(*) FILTER (WHERE delivered_order_count >= 1), 0)
-    numerator: COUNT(*) FILTER (WHERE is_repeat_customer)
-    denominator: COUNT(*) FILTER (WHERE delivered_order_count >= 1)
+    relation: orders
+    query: |-
+      SELECT (COUNT(*) FILTER (WHERE c.delivered_orders >= 2))::numeric / NULLIF(COUNT(*), 0)
+               AS repeat_customer_rate
+      FROM (SELECT customer_unique_id, COUNT(*) AS delivered_orders
+            FROM analytics.orders
+            WHERE is_delivered
+            GROUP BY customer_unique_id) AS c
+    numerator: Customers (customer_unique_id) with at least two delivered orders.
+    denominator: Customers with at least one delivered order.
     unit: ratio
     exclusions: [Customers with no delivered order.]
     caveats:
       - Uses customer_unique_id; per-order customer IDs would make every customer look new.
     aliases: [repeat customer rate, repeat purchase rate, returning customer rate, retention rate]
+
+# Relationships between exposed relations. The validator only accepts joins whose key
+# pairs connect columns of the same relationship key (ADR 0014); cardinality is then
+# derived from uniqueness, which is how grouped subqueries become safe to join.
+relationships:
+  - name: orders_order_items
+    one: orders
+    many: order_items
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}]
+  - name: orders_order_sellers
+    one: orders
+    many: order_sellers
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}]
+  - name: orders_order_categories
+    one: orders
+    many: order_categories
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}]
+  - name: orders_order_payments
+    one: orders
+    many: order_payments
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}]
+  - name: products_order_items
+    one: products
+    many: order_items
+    cardinality: one_to_many
+    keys: [{one: product_id, many: product_id}]
+  - name: order_sellers_order_items
+    one: order_sellers
+    many: order_items
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}, {one: seller_id, many: seller_id}]
+  - name: order_categories_order_items
+    one: order_categories
+    many: order_items
+    cardinality: one_to_many
+    keys: [{one: order_id, many: order_id}, {one: product_category, many: product_category}]
+
+# SQL function allowlist (PostgreSQL names). Anything not listed is rejected.
+# Deliberately absent: NOW, CURRENT_DATE and friends (the dataset ends in 2018, so
+# "relative to today" filters silently return nothing), and every system, session,
+# file, network or sleep function.
+functions:
+  - {name: COUNT, kind: aggregate, duplicate_sensitive: true, description: "Row or non-null count; COUNT(DISTINCT x) counts distinct values."}
+  - {name: SUM, kind: aggregate, duplicate_sensitive: true, description: "Sum."}
+  - {name: AVG, kind: aggregate, duplicate_sensitive: true, description: "Arithmetic mean."}
+  - {name: MIN, kind: aggregate, duplicate_sensitive: false, description: "Minimum."}
+  - {name: MAX, kind: aggregate, duplicate_sensitive: false, description: "Maximum."}
+  - {name: STDDEV, kind: aggregate, duplicate_sensitive: true, description: "Sample standard deviation."}
+  - {name: PERCENTILE_CONT, kind: aggregate, duplicate_sensitive: true, description: "Continuous percentile, e.g. PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) for the median."}
+  - {name: BOOL_OR, kind: aggregate, duplicate_sensitive: false, description: "True if any input is true."}
+  - {name: BOOL_AND, kind: aggregate, duplicate_sensitive: false, description: "True if all inputs are true."}
+  - {name: ROUND, kind: scalar, description: "Round to N decimals."}
+  - {name: COALESCE, kind: scalar, description: "First non-null argument."}
+  - {name: NULLIF, kind: scalar, description: "NULL when both arguments are equal (use to avoid division by zero)."}
+  - {name: DATE_TRUNC, kind: scalar, description: "Truncate a date/timestamp, e.g. DATE_TRUNC('month', purchased_at)."}
+  - {name: EXTRACT, kind: scalar, description: "Date part, e.g. EXTRACT(YEAR FROM purchased_at)."}
+  - {name: TO_CHAR, kind: scalar, description: "Format a date or number as text."}
+  - {name: ABS, kind: scalar, description: "Absolute value."}
+  - {name: FLOOR, kind: scalar, description: "Round down."}
+  - {name: CEIL, kind: scalar, description: "Round up."}
+  - {name: GREATEST, kind: scalar, description: "Largest argument."}
+  - {name: LEAST, kind: scalar, description: "Smallest argument."}
+  - {name: POWER, kind: scalar, description: "Exponentiation."}
+  - {name: SQRT, kind: scalar, description: "Square root."}
+  - {name: LOWER, kind: scalar, description: "Lower-case text."}
+  - {name: UPPER, kind: scalar, description: "Upper-case text."}
+  - {name: INITCAP, kind: scalar, description: "Capitalise words."}
+  - {name: LENGTH, kind: scalar, description: "Text length."}
+  - {name: TRIM, kind: scalar, description: "Remove surrounding whitespace."}
+  - {name: SUBSTRING, kind: scalar, description: "Part of a text value."}
+  - {name: CONCAT, kind: scalar, description: "Concatenate text."}
+  - {name: REPLACE, kind: scalar, description: "Replace text."}
+  - {name: SPLIT_PART, kind: scalar, description: "Field of delimited text."}
+  - {name: POSITION, kind: scalar, description: "Position of a substring."}
+  - {name: ROW_NUMBER, kind: window, description: "Row number within a window."}
+  - {name: RANK, kind: window, description: "Rank with gaps."}
+  - {name: DENSE_RANK, kind: window, description: "Rank without gaps."}
+  - {name: NTILE, kind: window, description: "Bucket number."}
+  - {name: LAG, kind: window, description: "Value from a previous row."}
+  - {name: LEAD, kind: window, description: "Value from a following row."}
+  - {name: FIRST_VALUE, kind: window, description: "First value in the window frame."}
+  - {name: LAST_VALUE, kind: window, description: "Last value in the window frame."}
+  - {name: PERCENT_RANK, kind: window, description: "Relative rank (0-1)."}
+  - {name: CUME_DIST, kind: window, description: "Cumulative distribution (0-1)."}
+
+# Types allowed in CAST(x AS type) and x::type.
+cast_types: [numeric, integer, bigint, smallint, double precision, real, text, varchar, date, timestamp, boolean, interval]

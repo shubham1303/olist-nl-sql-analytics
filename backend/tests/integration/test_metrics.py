@@ -8,7 +8,7 @@ from decimal import Decimal
 
 import pytest
 
-from olist_nlsql.catalog import Metric, load_catalog
+from olist_nlsql.catalog import Metric, MetricVariant, load_catalog
 from tests.integration.helpers import Conn, scalar
 
 METRICS = load_catalog().metrics
@@ -46,7 +46,7 @@ def test_every_metric_has_an_expected_value() -> None:
 
 @pytest.mark.parametrize("metric", METRICS, ids=lambda m: m.name)
 def test_metric_value(reader: Conn, metric: Metric) -> None:
-    value = evaluate(reader, metric.relation, metric.expression)
+    value = scalar(reader, metric.sql())
     expected = EXPECTED[metric.name]
     if metric.name in ROUNDED_TO_4DP:
         assert isinstance(value, Decimal)
@@ -59,17 +59,20 @@ def test_metric_value(reader: Conn, metric: Metric) -> None:
 
 
 @pytest.mark.parametrize("pair", VARIANTS, ids=lambda p: f"{p[0].name}@{p[1].relation}")
-def test_variant_equals_primary(reader: Conn, pair: tuple[Metric, object]) -> None:
+def test_variant_equals_primary(reader: Conn, pair: tuple[Metric, MetricVariant]) -> None:
     metric, variant = pair
-    primary = evaluate(reader, metric.relation, metric.expression)
-    assert evaluate(reader, variant.relation, variant.expression) == primary  # type: ignore[attr-defined]
+    primary = scalar(reader, metric.sql())
+    assert evaluate(reader, variant.relation, variant.expression) == primary
 
 
-@pytest.mark.parametrize("metric", [m for m in METRICS if m.numerator], ids=lambda m: m.name)
+# Expression metrics state numerator/denominator as SQL; query metrics state them in prose.
+@pytest.mark.parametrize(
+    "metric", [m for m in METRICS if m.numerator and m.expression], ids=lambda m: m.name
+)
 def test_ratio_equals_numerator_over_denominator(reader: Conn, metric: Metric) -> None:
     numerator = evaluate(reader, metric.relation, str(metric.numerator))
     denominator = evaluate(reader, metric.relation, str(metric.denominator))
-    value = evaluate(reader, metric.relation, metric.expression)
+    value = scalar(reader, metric.sql())
     assert isinstance(value, Decimal)
     assert abs(value - Decimal(str(numerator)) / Decimal(str(denominator))) < Decimal("1e-12")
 

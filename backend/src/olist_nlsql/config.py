@@ -26,6 +26,9 @@ class Settings:
     max_question_chars: int = 500
     max_request_bytes: int = 4096
     max_result_rows: int = MAX_RESULT_ROWS_CEILING
+    # SQL validator limits (docs/sql-safety.md).
+    max_sql_chars: int = 8000
+    max_joins: int = 6
 
 
 def _read_str(env: Mapping[str, str], name: str, default: str) -> str:
@@ -67,4 +70,6 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         max_result_rows=_read_int(
             env, "MAX_RESULT_ROWS", defaults.max_result_rows, maximum=MAX_RESULT_ROWS_CEILING
         ),
+        max_sql_chars=_read_int(env, "MAX_SQL_CHARS", defaults.max_sql_chars),
+        max_joins=_read_int(env, "MAX_JOINS", defaults.max_joins),
     )

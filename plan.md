@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 1 complete; Phase 2 not started.** Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phase 2 complete; Phase 3 not started.** Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-09-23
 
 ---
@@ -39,6 +39,8 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | Attribution | Latest review per order; order outcomes attributed fully to each seller/category; grouped outcome counts not additive | [0011](docs/adr/0011-review-and-outcome-attribution.md) |
 | Categories | Raw values unchanged; corrections/manual translations only in curated layer with source, normalized value, provenance | [0012](docs/adr/0012-category-translation-provenance.md) |
 | Time window | 2017-01..2018-08 recommended for trends/comparisons; never auto-filtered; requested periods preserved with caveat | [0013](docs/adr/0013-recommended-time-window.md) |
+| SQL validation | sqlglot AST, fail-closed, catalog-driven allowlists; joins via relationship key domains; uniqueness-based cardinality; fan-out + bridge-attribution rules; regenerated SQL only | [0014](docs/adr/0014-sql-validation-design.md) |
+| Model-visible set | Five fact views + product attributes; `customers`, `sellers` and product lifetime columns hidden | [0015](docs/adr/0015-model-visible-relations.md) |
 
 ---
 
@@ -78,9 +80,9 @@ olist-nl-sql/
 ├── plan.md
 ├── .github/workflows/ci.yml
 ├── docs/
-│   ├── adr/                    # decisions (0001–0013)
+│   ├── adr/                    # decisions (0001–0015)
 │   ├── architecture.md         # Phase 9
-│   ├── security.md             # Phase 2
+│   ├── sql-safety.md           # validator guarantees, grain analysis, limitations
 │   ├── data-model.md           # raw → analytics design, grains, data-quality caveats
 │   ├── metrics.md              # metric definitions and the revenue decision
 │   └── local-database.md       # Docker Postgres commands, roles, build steps
@@ -92,9 +94,9 @@ olist-nl-sql/
 │   ├── src/olist_nlsql/
 │   │   ├── config.py           # the ONLY place defaults (incl. model ID) live
 │   │   ├── service.py          # orchestration                          (Phase 3)
-│   │   ├── catalog/            # catalog.yaml + strict loader (done); prompt + allowlist generation (Phase 2 / 3)
+│   │   ├── catalog/            # catalog.yaml + strict loader (done); prompt rendering (Phase 3)
 │   │   ├── dbsetup/            # dataset download/verify, build CLI, sql/010–040 (done)
-│   │   ├── sqlsafety/          # validator, policy                      (Phase 2)
+│   │   ├── sqlsafety/          # validator, grain analysis, policy from catalog (done)
 │   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
 │   │   ├── llm/                # protocol, bedrock, fake, prompts        (Phase 3)
 │   │   ├── api/                # lambda_handler, local_app (dev only)     (Phase 6 / 7)
@@ -103,7 +105,6 @@ olist-nl-sql/
 ├── eval/                       # Phase 4
 │   ├── benchmark/dev.yaml      # 30 questions — used for tuning
 │   ├── benchmark/test.yaml     # 20 questions — held-out, never tuned on
-│   ├── attacks.yaml            # adversarial SQL + questions
 │   └── results/                # committed run reports (json + md), one per run
 ├── frontend/                   # Vite + React + TS
 │   └── src/charts/selectChart.ts   # Phase 6
@@ -121,7 +122,7 @@ A phase is done only when its milestone is met and CI is green.
 |---|---|---|---|
 | 0 | **Scaffold** | ADRs; repo skeleton; backend project (uv, ruff, mypy, pytest, config module); Vite React TS app with Vitest; Terraform root skeleton; `ci.yml`; README | All local checks that CI runs pass: backend lint/format/types/tests, frontend lint/types/tests/build, `terraform fmt`/`validate` |
 | 1 ✅ | **Data foundation (local)** | `docker-compose.yml`; pinned-checksum download; `raw` schema + load; 8 curated `analytics` views; `analytics_reader` role; initial `catalog.yaml` + drift test; `QueryExecutor` + `PostgresExecutor`; data-model / metrics / local-database docs; integration job in CI | **Met:** 168 integration tests pass from a clean volume; role tests prove no writes/DDL/raw access even with read-only disabled; revenue identical across all views and equal to an independent CSV recomputation; audit control totals reconcile exactly |
-| 2 | **SQL safety** | Allowlist generated from the catalog; validator with rejection codes/messages; executor contract suite (reusable for Data API); attack corpus; `security.md` | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
+| 2 ✅ | **SQL safety + semantic validation** | Catalog relationships, visibility, function/cast allowlists; sqlglot validator with stable error codes; join-path + fan-out + attribution analysis; adversarial corpus; `sql-safety.md`; ADRs 0014–0015 | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
 | 3 | **NL→SQL core** | `LlmClient` protocol + Bedrock client + fake; prompt built from catalog; service with ≤ 1 repair; CLI `ask "…"`; live smoke test | End-to-end answers locally for a handful of sample questions; unit tests cover happy / repair / give-up paths |
 | 4 | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | Baseline report committed with stage metrics for dev; one held-out checkpoint run recorded |
 | 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
@@ -186,6 +187,16 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ---
 
 ## 9. Progress log
+
+### Phase 2 (done, 2026-09-24)
+
+- Catalog extended: `exposed` flags, grain keys, 7 relationships, bridge attribution keys, 42-function allowlist, cast types; relevant metrics derived per relation.
+- Model-visible set: 5 fact views + product attributes (ADR 0015); `customers`, `sellers`, product lifetime columns hidden.
+- `sqlsafety` validator: 8 fail-closed stages; executes only SQL regenerated from the validated AST and re-parsed.
+- Grain analysis catches fan-out through joins, CTEs, derived tables and WHERE subqueries; accepts pre-aggregation, COUNT(DISTINCT), MIN/MAX, EXISTS.
+- Corpus: 49 accepted + 132 rejected queries; 534 backend tests pass (291 unit, 243 integration).
+- Found and fixed: sqlglot models `AND`/`OR`/`EXISTS` as functions; operator nodes could borrow a column's name for the allowlist; sqlglot regenerates `E'\'` as an unterminated string (now refused by the round-trip check).
+- Executor contract suite for the Data API deferred to Phase 7 (only one executor exists).
 
 ### Phase 1 (done, 2026-09-23)
 

@@ -42,20 +42,40 @@ flowchart TB
 
 ## Views and grains
 
-| View | Grain | Rows | Use for |
-|---|---|---:|---|
-| `orders` | One row per order | 99,441 | Order counts, status, delivery, reviews, order-level money |
-| `order_items` | One row per order item (a unit) | 112,650 | Products, units, item prices, category/seller revenue |
-| `order_sellers` | One row per order × seller | 100,010 | Seller performance over time (revenue, delivery, reviews) |
-| `order_categories` | One row per order × category | 99,470 | Category performance over time (revenue, delivery, reviews) |
-| `order_payments` | One row per payment record | 103,886 | Payment methods, installments |
-| `customers` | One row per real customer (`customer_unique_id`) | 96,096 | Customer counts, repeat behaviour, lifetime revenue |
-| `sellers` | One row per seller | 3,095 | Lifetime seller scorecard |
-| `products` | One row per product | 32,951 | Category, attributes, lifetime product sales |
+The model sees six of the eight views
+([ADR 0015](adr/0015-model-visible-relations.md)). `customers` and `sellers` are lifetime summaries whose totals would ignore a question's date filter, so they're hidden from the model and rejected by the SQL validator. The same goes for the lifetime sales columns of `products`. Hidden views stay in place, documented and tested.
+
+| View | Grain | Rows | Model-visible | Use for |
+|---|---|---:|:---:|---|
+| `orders` | One row per order | 99,441 | ✅ | Order counts, status, delivery, reviews, order-level money |
+| `order_items` | One row per order item (a unit) | 112,650 | ✅ | Products, units, item prices, category/seller revenue |
+| `order_sellers` | One row per order × seller | 100,010 | ✅ | Seller performance over time (revenue, delivery, reviews) |
+| `order_categories` | One row per order × category | 99,470 | ✅ | Category performance over time (revenue, delivery, reviews) |
+| `order_payments` | One row per payment record | 103,886 | ✅ | Payment methods, installments |
+| `customers` | One row per real customer (`customer_unique_id`) | 96,096 | — | Lifetime customer summary (database tests only) |
+| `sellers` | One row per seller | 3,095 | — | Lifetime seller scorecard (database tests only) |
+| `products` | One row per product | 32,951 | attributes only | Category and physical attributes; lifetime sales columns hidden |
 
 Every view's grain key is tested as unique and not null, and every row count is
 checked against an independent raw count
 ([test_analytics_grain.py](../backend/tests/integration/test_analytics_grain.py)).
+
+## Relationships
+
+The catalog declares which joins are allowed. The SQL validator rejects everything else, and also rejects joins that would duplicate aggregated values (see [sql-safety.md](sql-safety.md)).
+
+```mermaid
+flowchart LR
+    orders -- order_id --> order_items
+    orders -- order_id --> order_sellers
+    orders -- order_id --> order_categories
+    orders -- order_id --> order_payments
+    products -- product_id --> order_items
+    order_sellers -- "order_id, seller_id" --> order_items
+    order_categories -- "order_id, product_category" --> order_items
+```
+
+Each arrow is one-to-many. Joining two many-sides, such as `order_items` with `order_payments` on `order_id`, is many-to-many and rejected.
 
 ## Design rules
 

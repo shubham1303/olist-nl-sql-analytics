@@ -7,8 +7,20 @@ def test_defaults_when_env_is_empty() -> None:
     assert load_settings({}) == Settings()
 
 
-def test_default_model_is_us_sonnet_5_profile() -> None:
+def test_default_model_is_sonnet_5_us_geo_profile_on_bedrock_runtime() -> None:
     assert load_settings({}).bedrock_model_id == "us.anthropic.claude-sonnet-5"
+
+
+def test_reasoning_settings() -> None:
+    assert (Settings().llm_effort, Settings().llm_thinking) == ("medium", "disabled")
+    settings = load_settings({"NLSQL_LLM_EFFORT": "low", "NLSQL_LLM_THINKING": "adaptive"})
+    assert (settings.llm_effort, settings.llm_thinking) == ("low", "adaptive")
+
+
+@pytest.mark.parametrize("name", ["NLSQL_LLM_EFFORT", "NLSQL_LLM_THINKING"])
+def test_invalid_reasoning_choice_rejected(name: str) -> None:
+    with pytest.raises(ConfigError, match="must be one of"):
+        load_settings({name: "turbo"})
 
 
 def test_env_overrides() -> None:

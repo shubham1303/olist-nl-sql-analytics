@@ -5,6 +5,7 @@ description = "Natural-language-to-SQL analytics over the Olist e-commerce datas
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "anthropic[bedrock]>=1.0",
     "pyyaml>=6.0",
     "sqlglot>=30.19,<31",
 ]
@@ -48,6 +49,8 @@ select = [
 # Tests: assert is expected; SQL is built from trusted catalog/view names (S608); long
 # SQL literals cannot be wrapped by the formatter (E501).
 "tests/**" = ["S101", "S608", "E501"]
+# Prompt text: each rule is one line of the rendered prompt; wrapping would change it.
+"src/olist_nlsql/llm/prompts.py" = ["E501"]
 
 [tool.mypy]
 strict = true

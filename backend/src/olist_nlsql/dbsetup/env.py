@@ -37,6 +37,27 @@ class MissingSettingError(RuntimeError):
     pass
 
 
+def reader_conninfo(env: Mapping[str, str] | None = None) -> str:
+    """Connection string for analytics_reader only: what the application uses.
+
+    Unlike LocalDb.from_env, this needs no superuser or owner password.
+    """
+    env = os.environ if env is None else env
+    password = env.get("NLSQL_READER_PASSWORD", "")
+    if not password:
+        raise MissingSettingError(
+            "NLSQL_READER_PASSWORD is not set. Copy .env.example to .env and fill it in."
+        )
+    return make_conninfo(
+        host=env.get("POSTGRES_HOST", "127.0.0.1"),
+        port=int(env.get("POSTGRES_PORT", "5432")),
+        dbname=env.get("POSTGRES_DB", "olist"),
+        user=READER_ROLE,
+        password=password,
+        application_name="olist-nlsql",
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class LocalDb:
     host: str

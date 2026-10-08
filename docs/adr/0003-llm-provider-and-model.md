@@ -1,6 +1,6 @@
 # 0003. Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven
 
-- Status: Accepted
+- Status: Accepted; endpoint, client and reply mechanism specified by [ADR 0016](0016-bedrock-client-and-structured-output.md)
 - Date: 2026-09-23
 
 ## Context

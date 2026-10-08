@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 2 complete; Phase 3 not started.** Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phase 3 complete; Phase 4 not started.** Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-09-23
 
 ---
@@ -41,6 +41,7 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | Time window | 2017-01..2018-08 recommended for trends/comparisons; never auto-filtered; requested periods preserved with caveat | [0013](docs/adr/0013-recommended-time-window.md) |
 | SQL validation | sqlglot AST, fail-closed, catalog-driven allowlists; joins via relationship key domains; uniqueness-based cardinality; fan-out + bridge-attribution rules; regenerated SQL only | [0014](docs/adr/0014-sql-validation-design.md) |
 | Model-visible set | Five fact views + product attributes; `customers`, `sellers` and product lifetime columns hidden | [0015](docs/adr/0015-model-visible-relations.md) |
+| Bedrock client | `bedrock-runtime` endpoint via `anthropic.AnthropicBedrock` (InvokeModel, Messages body), `us.anthropic.claude-sonnet-5`, forced `submit_answer` tool call (no structured outputs for Sonnet 5 on Bedrock), cached catalog prompt | [0016](docs/adr/0016-bedrock-client-and-structured-output.md) |
 
 ---
 
@@ -80,9 +81,11 @@ olist-nl-sql/
 ├── plan.md
 ├── .github/workflows/ci.yml
 ├── docs/
-│   ├── adr/                    # decisions (0001–0015)
+│   ├── adr/                    # decisions (0001–0016)
 │   ├── architecture.md         # Phase 9
 │   ├── sql-safety.md           # validator guarantees, grain analysis, limitations
+│   ├── nl-to-sql.md            # pipeline flow, prompt, repair, result, failure modes
+│   ├── local-development.md    # setup, AWS auth for Bedrock, tests
 │   ├── data-model.md           # raw → analytics design, grains, data-quality caveats
 │   ├── metrics.md              # metric definitions and the revenue decision
 │   └── local-database.md       # Docker Postgres commands, roles, build steps
@@ -93,12 +96,13 @@ olist-nl-sql/
 │   ├── pyproject.toml, uv.lock
 │   ├── src/olist_nlsql/
 │   │   ├── config.py           # the ONLY place defaults (incl. model ID) live
-│   │   ├── service.py          # orchestration                          (Phase 3)
-│   │   ├── catalog/            # catalog.yaml + strict loader (done); prompt rendering (Phase 3)
+│   │   ├── pipeline.py         # orchestration: prompt → model → validator → repair → DB (done)
+│   │   ├── cli.py              # python -m olist_nlsql ask/prompt (done)
+│   │   ├── catalog/            # catalog.yaml + strict loader (done)
 │   │   ├── dbsetup/            # dataset download/verify, build CLI, sql/010–040 (done)
 │   │   ├── sqlsafety/          # validator, grain analysis, policy from catalog (done)
 │   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
-│   │   ├── llm/                # protocol, bedrock, fake, prompts        (Phase 3)
+│   │   ├── llm/                # client protocol, bedrock, fake, prompts, output schema (done)
 │   │   ├── api/                # lambda_handler, local_app (dev only)     (Phase 6 / 7)
 │   │   └── evaluation/         # runner, compare, report                 (Phase 4)
 │   └── tests/unit | integration | live
@@ -123,7 +127,7 @@ A phase is done only when its milestone is met and CI is green.
 | 0 | **Scaffold** | ADRs; repo skeleton; backend project (uv, ruff, mypy, pytest, config module); Vite React TS app with Vitest; Terraform root skeleton; `ci.yml`; README | All local checks that CI runs pass: backend lint/format/types/tests, frontend lint/types/tests/build, `terraform fmt`/`validate` |
 | 1 ✅ | **Data foundation (local)** | `docker-compose.yml`; pinned-checksum download; `raw` schema + load; 8 curated `analytics` views; `analytics_reader` role; initial `catalog.yaml` + drift test; `QueryExecutor` + `PostgresExecutor`; data-model / metrics / local-database docs; integration job in CI | **Met:** 168 integration tests pass from a clean volume; role tests prove no writes/DDL/raw access even with read-only disabled; revenue identical across all views and equal to an independent CSV recomputation; audit control totals reconcile exactly |
 | 2 ✅ | **SQL safety + semantic validation** | Catalog relationships, visibility, function/cast allowlists; sqlglot validator with stable error codes; join-path + fan-out + attribution analysis; adversarial corpus; `sql-safety.md`; ADRs 0014–0015 | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
-| 3 | **NL→SQL core** | `LlmClient` protocol + Bedrock client + fake; prompt built from catalog; service with ≤ 1 repair; CLI `ask "…"`; live smoke test | End-to-end answers locally for a handful of sample questions; unit tests cover happy / repair / give-up paths |
+| 3 ✅* | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met with a fake model** (unit + DB integration, all paths). *Live-model half pending: Bedrock model access not yet granted; rerun `pytest -m live -s`.* |
 | 4 | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | Baseline report committed with stage metrics for dev; one held-out checkpoint run recorded |
 | 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
 | 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
@@ -187,6 +191,16 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ---
 
 ## 9. Progress log
+
+### Phase 3 (done, 2026-09-24)
+
+- Pipeline: catalog prompt → Bedrock (bedrock-runtime, forced tool call) → validator → at most one repair → `analytics_reader` → typed result; ≤ 2 model calls enforced and tested.
+- Prompt v1 generated from the catalog: ≈ 22.9k chars / ≈ 5.7k tokens; hidden relations absent (tested).
+- Distinct failure statuses incl. `validator_error` (new `VALIDATOR_INTERNAL_ERROR` code, traceback logged only) and non-repairable writes.
+- Validator made idempotent (LIMIT up to max_rows + 1 accepted) after a pipeline test showed its own output failed re-validation.
+- CLI `python -m olist_nlsql ask|prompt` with `--json`, `--show-prompt`, `--fake-sql`.
+- 663 tests pass (unit + integration); live smoke test skips: **Bedrock model access not yet granted** (`agreementAvailability: NOT_AVAILABLE`).
+- ADR 0016: bedrock-runtime + `AnthropicBedrock` + `us.anthropic.claude-sonnet-5` + forced tool call. The first draft (Mantle + `output_config.format`) was corrected after checking AWS docs: structured outputs are unsupported for Sonnet 5 on Bedrock and would have returned 400.
 
 ### Phase 2 (done, 2026-09-24)
 

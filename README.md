@@ -1,83 +1,89 @@
-# Olist NL-to-SQL Analytics
+# olist-nl-sql
 
-Ask business questions about the [Olist Brazilian E-Commerce dataset][olist] in plain
-English and get back a table, an automatically selected chart, the SQL that produced
-it, and the metric definitions and assumptions used.
+Ask questions about the [Olist e-commerce dataset][olist] in plain English and get
+back the answer as a table, along with the SQL that produced it and any assumptions
+the model made along the way.
 
-> **Status:** Phase 2 complete (local data, curated analytics layer, SQL safety validator). See [plan.md](plan.md)
-> for the roadmap and [docs/adr/](docs/adr/README.md) for the architecture decisions.
+The interesting part of this project (for me anyway) isn't calling an LLM, it's
+making it safe to run whatever SQL the LLM hands back. So most of the code is the
+validator and the plumbing around it.
 
-## Architecture (target)
+## How it works
 
-React/TypeScript frontend → API Gateway HTTP API → Python Lambda → Amazon Bedrock
-(Claude Sonnet 5, config-driven) for SQL generation → sqlglot safety validation → Aurora
-Serverless v2 PostgreSQL via the RDS Data API, as a read-only role that can see only
-curated analytics views. Infrastructure is Terraform. Accuracy is measured on a
-verified 50-question benchmark with a 20-question held-out split.
+1. The question goes to Claude Sonnet 5 on Bedrock, together with a system prompt
+   generated from a catalog of the curated views (tables, columns, metric definitions).
+2. The model has to reply by calling a `submit_answer` tool with the SQL, its
+   interpretation of the question, and assumptions. The reply gets parsed strictly
+   because Bedrock doesn't enforce the schema for this model.
+3. The SQL goes through a sqlglot-based validator: single SELECT only, allowed views
+   and columns only, no fan-out joins that would double count revenue, a row limit, etc.
+   Details in [docs/sql-safety.md](docs/sql-safety.md).
+4. If the validator rejects it for a fixable reason, the model gets exactly one more
+   try with the error code.
+5. The validator's regenerated SQL (never the model's original text) runs against
+   Postgres as a read-only role that can only see the analytics views.
 
-## Repository layout
+The model never sees actual rows from the database, and it's never called more
+than twice per question.
 
-| Path | Contents |
-|---|---|
-| `backend/` | Python 3.13 package `olist_nlsql` (uv, ruff, mypy, pytest), including the analytics catalog and database tooling |
-| `frontend/` | Vite + React + TypeScript (oxlint, Vitest) |
-| `infra/main/` | Terraform root configuration |
-| `docs/` | [Data model](docs/data-model.md), [metrics](docs/metrics.md), [SQL safety](docs/sql-safety.md), [local database](docs/local-database.md), [ADRs](docs/adr/README.md) |
-| `docker-compose.yml` | Local PostgreSQL 16 |
-| `.github/workflows/` | CI |
+## Where it's at
 
-## Prerequisites
+Phases 1-3 are done: local Postgres with the curated views, the validator, and the
+pipeline + CLI. I'm still waiting on Bedrock model access, so right now the pipeline
+runs end to end only with the fake model (`--fake-sql`). The live smoke test skips
+itself until access comes through.
 
-- [uv](https://docs.astral.sh/uv/) (installs Python 3.13 automatically)
-- Node.js 24 LTS (see `.nvmrc`)
-- Terraform ≥ 1.10
-- Docker
+Next up is an eval set of 50 questions (30 dev / 20 held out) so I can actually
+measure accuracy, then a small React UI, then deploying to AWS (Lambda + Aurora
+Serverless). The full roadmap is in [plan.md](plan.md), and the reasoning behind
+most decisions is written up as ADRs in [docs/adr](docs/adr/README.md).
 
-## Common commands
+## Running it locally
 
-Backend (`cd backend`):
-
-```sh
-uv sync                    # create .venv and install dependencies
-uv run ruff check .        # lint
-uv run ruff format .       # format
-uv run mypy                # type check (strict)
-uv run pytest              # unit tests (excludes integration and live)
-uv run pytest -m integration   # needs the local database (below)
-```
-
-Local database (full guide: [docs/local-database.md](docs/local-database.md)):
+You need [uv](https://docs.astral.sh/uv/), Docker, and Node 24 if you want to touch
+the frontend.
 
 ```sh
-cp .env.example .env                              # fill in passwords
-docker compose up -d --wait
+cp .env.example .env          # set the db passwords
+docker compose up -d --wait   # postgres 16 on 127.0.0.1:5432
 cd backend
-uv run python -m olist_nlsql.dbsetup download     # Kaggle, SHA-256 verified
-uv run python -m olist_nlsql.dbsetup build        # raw data + analytics views
+uv sync
+uv run python -m olist_nlsql.dbsetup download   # pulls the kaggle zip, checks sha256
+uv run python -m olist_nlsql.dbsetup build
 ```
 
-Frontend (`cd frontend`):
+Then ask something:
 
 ```sh
-npm ci
-npm run dev                # local dev server
-npm run lint
-npm run typecheck
-npm test
-npm run build
+# real model (needs AWS creds + Bedrock access, see docs/local-development.md)
+uv run python -m olist_nlsql ask "What was merchandise revenue in 2017?"
+
+# offline, you supply the "model" SQL yourself
+uv run python -m olist_nlsql ask "How many orders?" --fake-sql "SELECT COUNT(*) FROM orders"
 ```
 
-Infrastructure (`cd infra/main`):
+`--json` gives the full result, `--show-prompt` prints what gets sent to the model.
+AWS credentials come from your normal AWS profile/SSO, not from `.env`.
+
+## Tests
 
 ```sh
-terraform fmt -check -recursive
-terraform init -backend=false
-terraform validate
+uv run pytest                  # unit tests, no db or aws needed
+uv run pytest -m integration   # needs the docker db
+uv run pytest -m live -s       # hits bedrock for real, never runs in CI
+uv run ruff check . && uv run mypy
 ```
 
-## Data licence
+## Repo layout
 
-The Olist dataset is published under CC BY-NC-SA 4.0. Raw data is downloaded by
-script and never committed to this repository.
+- `backend/` - the Python package (`olist_nlsql`): catalog, db setup, validator, llm client, pipeline, CLI
+- `frontend/` - Vite + React scaffold, nothing real in it yet
+- `infra/main/` - Terraform, only providers/variables so far
+- `docs/` - design notes and ADRs
+
+## Data
+
+The Olist dataset is CC BY-NC-SA 4.0. It's downloaded by the setup script and
+isn't committed here.
 
 [olist]: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce

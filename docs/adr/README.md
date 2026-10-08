@@ -7,7 +7,7 @@ accepted; to change a decision, add a new ADR that supersedes it.
 |---|---|---|
 | [0001](0001-database-platform.md) | Database platform: Aurora Serverless v2 + RDS Data API, Docker Postgres locally | Accepted |
 | [0002](0002-database-is-the-security-boundary.md) | The database is the primary security boundary; sqlglot validation is layer two | Accepted |
-| [0003](0003-llm-provider-and-model.md) | Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven | Accepted |
+| [0003](0003-llm-provider-and-model.md) | Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven | Accepted (endpoint/client detailed in 0016) |
 | [0004](0004-public-access-and-cost-controls.md) | Shared access code, throttling, request limits, $20 budget | Accepted |
 | [0005](0005-curated-analytics-schema-and-catalog.md) | Curated analytics views + one catalog as source of truth | Accepted |
 | [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted |
@@ -20,5 +20,6 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0013](0013-recommended-time-window.md) | 2017-01 to 2018-08 is a recommended window, not an automatic filter | Accepted |
 | [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted |
 | [0015](0015-model-visible-relations.md) | The model sees fact views and product attributes; lifetime summaries are hidden | Accepted |
+| [0016](0016-bedrock-client-and-structured-output.md) | Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies | Accepted |
 
 Template: [template.md](template.md)

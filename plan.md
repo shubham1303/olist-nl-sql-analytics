@@ -1,7 +1,7 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 3 complete; Phase 4 not started.** Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
-Last updated: 2026-09-23
+Status: **Phase 4 in progress:** harness built, 50 items drafted and snapshotted, human verification pending. Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
+Last updated: 2026-10-08
 
 ---
 
@@ -152,7 +152,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 | Data API 1 MiB response cap | Row, column and text-length caps |
 | Unverified benchmark references | Mandatory human verification fields; unverified items excluded from scoring |
 | Lambda packaging from Windows | Build for the Lambda platform explicitly or in CI |
-| **AWS CLI currently uses root credentials** | Before Phase 7: create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist) |
+| **AWS CLI currently uses root credentials** | Before Phase 7: create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
 | Dataset licence (CC BY-NC-SA 4.0) | Download script; never commit raw data; attribution in README |
 
 ---
@@ -191,6 +191,15 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ---
 
 ## 9. Progress log
+
+### Phase 4 (in progress, 2026-10-08)
+
+- Harness in `olist_nlsql.evaluation`: strict benchmark loader, comparator, runner, failure categoriser, markdown report with triage overrides; CLI `python -m olist_nlsql.evaluation check|snapshot|show|verify|run|report` ([eval/README.md](eval/README.md)).
+- ADR 0017: comparison rules (names/column order ignored, extra columns allowed, percent form for rates, month normalisation, per-item tolerances) and verification pinned to a content hash.
+- 50 items drafted (30 dev / 20 test) across all ADR 0006 areas and difficulties; all reference SQL passes the validator; ranked items checked for ties at the cut-off (dev-012 NULL-first ordering and a dev-021 tie fixed while drafting).
+- Snapshots were taken on a build from Olist's GitHub copy of the dataset (Kaggle blocked in that environment). It matches the pinned files except zip-code formatting and R$4,689.90 of freight; no item uses either. **Re-run `snapshot` on a Kaggle build before verifying.**
+- Harness self-test (`run --fake-reference`): 50/50 correct. 0 items verified, so nothing is scored yet.
+- Remaining for the milestone: human verification of all 50 items → baseline dev run with Bedrock → one held-out checkpoint run.
 
 ### Phase 3 (done, 2026-09-24)
 

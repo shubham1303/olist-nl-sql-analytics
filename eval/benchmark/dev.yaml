@@ -1,0 +1,619 @@
+# dev split of the NL-to-SQL benchmark (ADR 0006).
+# Rewritten by `python -m olist_nlsql.evaluation snapshot|verify`; comments are lost.
+version: 1
+split: dev
+items:
+- id: dev-001
+  question: How many orders are in the dataset?
+  difficulty: easy
+  tags: [aggregation]
+  reference_sql: |
+    SELECT COUNT(*) AS orders FROM orders
+  reference_result:
+    columns:
+    - {name: orders, type: integer}
+    rows:
+    - [99441]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-002
+  question: What was total merchandise revenue in 2017?
+  difficulty: easy
+  tags: [aggregation, filtering, time_series]
+  reference_sql: |
+    SELECT SUM(revenue) AS revenue
+    FROM orders
+    WHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'
+  reference_result:
+    columns:
+    - {name: revenue, type: number}
+    rows:
+    - ['6108492.27']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-003
+  question: How many orders were canceled?
+  difficulty: easy
+  tags: [filtering, aggregation]
+  reference_sql: |
+    SELECT COUNT(*) AS canceled_orders FROM orders WHERE is_canceled
+  notes: 'Catalog definition: status canceled only; ''unavailable'' is not canceled.'
+  reference_result:
+    columns:
+    - {name: canceled_orders, type: integer}
+    rows:
+    - [625]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-004
+  question: How many unique customers have placed an order?
+  difficulty: easy
+  tags: [customer, aggregation]
+  reference_sql: |
+    SELECT COUNT(DISTINCT customer_unique_id) AS customers FROM orders
+  reference_result:
+    columns:
+    - {name: customers, type: integer}
+    rows:
+    - [96096]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-005
+  question: What is the average review score across all reviewed orders?
+  difficulty: easy
+  tags: [review, aggregation]
+  reference_sql: |
+    SELECT AVG(review_score) AS average_review_score FROM orders
+  compare: {abs_tol: '0.0005'}
+  reference_result:
+    columns:
+    - {name: average_review_score, type: number}
+    rows:
+    - ['4.0863863468223324']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-006
+  question: What is the overall late delivery rate?
+  difficulty: easy
+  tags: [delivery, aggregation]
+  reference_sql: |
+    SELECT (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate
+    FROM orders
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  reference_result:
+    columns:
+    - {name: late_delivery_rate, type: number}
+    rows:
+    - ['0.06773090079817559863']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-007
+  question: How many orders were placed in each month of 2018?
+  difficulty: medium
+  tags: [time_series, aggregation]
+  reference_sql: |
+    SELECT purchase_month, COUNT(*) AS orders
+    FROM orders
+    WHERE purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'
+    GROUP BY purchase_month
+    ORDER BY purchase_month
+  compare: {order_matters: true}
+  notes: Includes the sparse 2018-09 and 2018-10 months; the question asks for all of 2018.
+  reference_result:
+    columns:
+    - {name: purchase_month, type: date}
+    - {name: orders, type: integer}
+    rows:
+    - ['2018-01-01', 7269]
+    - ['2018-02-01', 6728]
+    - ['2018-03-01', 7211]
+    - ['2018-04-01', 6939]
+    - ['2018-05-01', 6873]
+    - ['2018-06-01', 6167]
+    - ['2018-07-01', 6292]
+    - ['2018-08-01', 6512]
+    - ['2018-09-01', 16]
+    - ['2018-10-01', 4]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-008
+  question: Which 5 product categories generated the most revenue?
+  difficulty: medium
+  tags: [product_category, aggregation]
+  reference_sql: |
+    SELECT product_category, SUM(revenue) AS revenue
+    FROM order_items
+    GROUP BY product_category
+    ORDER BY revenue DESC
+    LIMIT 5
+  compare: {order_matters: true}
+  reference_result:
+    columns:
+    - {name: product_category, type: text}
+    - {name: revenue, type: number}
+    rows:
+    - [health_beauty, '1255695.13']
+    - [watches_gifts, '1198185.21']
+    - [bed_bath_table, '1035964.06']
+    - [sports_leisure, '979740.92']
+    - [computers_accessories, '904322.02']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-009
+  question: Which 10 customer states generated the most revenue?
+  difficulty: medium
+  tags: [customer, aggregation]
+  reference_sql: |
+    SELECT customer_state, SUM(revenue) AS revenue
+    FROM orders
+    GROUP BY customer_state
+    ORDER BY revenue DESC
+    LIMIT 10
+  compare: {order_matters: true}
+  reference_result:
+    columns:
+    - {name: customer_state, type: text}
+    - {name: revenue, type: number}
+    rows:
+    - [SP, '5163867.22']
+    - [RJ, '1811623.42']
+    - [MG, '1573508.20']
+    - [RS, '742559.78']
+    - [PR, '676883.06']
+    - [SC, '518578.28']
+    - [BA, '507108.83']
+    - [DF, '300886.45']
+    - [GO, '287870.46']
+    - [ES, '273532.13']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-010
+  question: How many distinct orders used each payment method?
+  difficulty: medium
+  tags: [aggregation]
+  reference_sql: |
+    SELECT payment_type, COUNT(DISTINCT order_id) AS orders
+    FROM order_payments
+    GROUP BY payment_type
+  notes: All statuses. Orders paid with several methods count once per method.
+  reference_result:
+    columns:
+    - {name: payment_type, type: text}
+    - {name: orders, type: integer}
+    rows:
+    - [boleto, 19784]
+    - [credit_card, 76505]
+    - [debit_card, 1528]
+    - [not_defined, 3]
+    - [voucher, 3866]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-011
+  question: Which 5 customer states have the longest average delivery time?
+  difficulty: medium
+  tags: [delivery, customer]
+  reference_sql: |
+    SELECT customer_state, AVG(delivery_days) AS average_delivery_days
+    FROM orders
+    GROUP BY customer_state
+    ORDER BY average_delivery_days DESC
+    LIMIT 5
+  compare: {order_matters: true, abs_tol: '0.01'}
+  reference_result:
+    columns:
+    - {name: customer_state, type: text}
+    - {name: average_delivery_days, type: number}
+    rows:
+    - [RR, '29.3868292682926829']
+    - [AP, '27.1852238805970149']
+    - [AM, '26.4258620689655172']
+    - [AL, '24.5440050377833753']
+    - [PA, '23.7729704016913319']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-012
+  question: Which 10 sellers had the highest revenue in 2018?
+  difficulty: medium
+  tags: [seller, filtering]
+  reference_sql: |
+    SELECT seller_id, SUM(revenue) AS revenue
+    FROM order_sellers
+    WHERE is_revenue_order
+      AND purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'
+    GROUP BY seller_id
+    ORDER BY revenue DESC
+    LIMIT 10
+  compare: {order_matters: true}
+  reference_result:
+    columns:
+    - {name: seller_id, type: text}
+    - {name: revenue, type: number}
+    rows:
+    - [4869f7a5dfa277a7dca6462dcf3b52b2, '138414.60']
+    - [955fee9216a65b617aa5c0531780ce60, '117328.86']
+    - [7d13fca15225358621be4086e1eb0964, '113628.97']
+    - [1025f0e2d44d7041d6cf58b6550e0bfa, '105196.71']
+    - [fa1c13f2614d7b5c4749cbc52fecda94, '95013.42']
+    - [7c67e1448b00f6e969d365cea6b010ab, '92746.90']
+    - [da8622b14eb17ae2831f4ac5b9dab84a, '89450.47']
+    - [4a3ca9315b744ce9f8e9374361493884, '72741.35']
+    - [6560211a19b47992c3666cc44a7e94c0, '67411.93']
+    - [edb1ef5e36e0c8cd84eb3c9b003e486d, '60855.55']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-013
+  question: What is the average review score for each delivery status?
+  difficulty: medium
+  tags: [review, delivery]
+  reference_sql: |
+    SELECT delivery_status, AVG(review_score) AS average_review_score
+    FROM orders
+    GROUP BY delivery_status
+  compare: {abs_tol: '0.0005'}
+  reference_result:
+    columns:
+    - {name: delivery_status, type: text}
+    - {name: average_review_score, type: number}
+    rows:
+    - [not_delivered, '1.7412882787750792']
+    - [on_time, '4.0335937500000000']
+    - [late, '2.2704905187274722']
+    - [missing_delivery_date, '4.5000000000000000']
+    - [early, '4.2941143109921396']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-014
+  question: How many orders from customers in São Paulo state (SP) were delivered?
+  difficulty: easy
+  tags: [filtering, customer]
+  reference_sql: |
+    SELECT COUNT(*) AS delivered_orders FROM orders WHERE customer_state = 'SP' AND is_delivered
+  reference_result:
+    columns:
+    - {name: delivered_orders, type: integer}
+    rows:
+    - [40501]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-015
+  question: What was the average order value in 2017 and in 2018?
+  difficulty: medium
+  tags: [aggregation, time_series]
+  reference_sql: |
+    SELECT EXTRACT(YEAR FROM purchased_at) AS year, AVG(revenue) AS average_order_value
+    FROM orders
+    WHERE purchased_at >= '2017-01-01' AND purchased_at < '2019-01-01'
+    GROUP BY EXTRACT(YEAR FROM purchased_at)
+  compare: {abs_tol: '0.01'}
+  reference_result:
+    columns:
+    - {name: year, type: number}
+    - {name: average_order_value, type: number}
+    rows:
+    - ['2018', '137.1388991425529133']
+    - ['2017', '137.6561638309859155']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-016
+  question: How many items were sold in the health_beauty category in 2018?
+  difficulty: medium
+  tags: [product_category, filtering]
+  reference_sql: |
+    SELECT COUNT(revenue) AS items_sold
+    FROM order_items
+    WHERE product_category = 'health_beauty'
+      AND purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'
+  notes: Items sold = units in revenue orders (catalog metric items_sold).
+  reference_result:
+    columns:
+    - {name: items_sold, type: integer}
+    rows:
+    - [5924]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-017
+  question: What was the month-over-month revenue growth rate for each month from February to August 2018?
+  difficulty: hard
+  tags: [time_series, multi_step]
+  reference_sql: |
+    WITH monthly AS (
+      SELECT purchase_month, SUM(revenue) AS revenue
+      FROM orders
+      WHERE purchased_at >= '2018-01-01' AND purchased_at < '2018-09-01'
+      GROUP BY purchase_month
+    )
+    SELECT purchase_month,
+           (revenue - LAG(revenue) OVER (ORDER BY purchase_month)) / LAG(revenue) OVER (ORDER BY purchase_month) AS growth_rate
+    FROM monthly
+    ORDER BY purchase_month
+    OFFSET 1
+  compare: {order_matters: true, abs_tol: '0.0005', allow_percent: true}
+  reference_result:
+    columns:
+    - {name: purchase_month, type: date}
+    - {name: growth_rate, type: number}
+    rows:
+    - ['2018-02-01', '-0.11376608431046558482']
+    - ['2018-03-01', '0.17085142712856185407']
+    - ['2018-04-01', '0.01278416640210347461']
+    - ['2018-05-01', '-0.00072588073236990865']
+    - ['2018-06-01', '-0.13053671836266869311']
+    - ['2018-07-01', '0.01711957617489951209']
+    - ['2018-08-01', '-0.03323769768465091174']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-018
+  question: What is the repeat customer rate?
+  difficulty: hard
+  tags: [customer, multi_step]
+  reference_sql: |
+    SELECT (COUNT(*) FILTER (WHERE c.delivered_orders >= 2))::numeric / NULLIF(COUNT(*), 0) AS repeat_customer_rate
+    FROM (SELECT customer_unique_id, COUNT(*) AS delivered_orders
+          FROM orders
+          WHERE is_delivered
+          GROUP BY customer_unique_id) AS c
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  notes: 'Catalog definition: customers with 2+ delivered orders / customers with 1+ delivered order.'
+  reference_result:
+    columns:
+    - {name: repeat_customer_rate, type: number}
+    rows:
+    - ['0.03000278497825574670']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-019
+  question: What was the cancellation rate in 2017?
+  difficulty: medium
+  tags: [filtering, aggregation]
+  reference_sql: |
+    SELECT (COUNT(*) FILTER (WHERE is_canceled))::numeric / NULLIF(COUNT(*), 0) AS cancellation_rate
+    FROM orders
+    WHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  reference_result:
+    columns:
+    - {name: cancellation_rate, type: number}
+    rows:
+    - ['0.00587570120396443538']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-020
+  question: Among product categories with at least 500 reviewed orders, which 5 have the lowest average
+    review score?
+  difficulty: hard
+  tags: [product_category, review]
+  reference_sql: |
+    SELECT product_category, AVG(review_score) AS average_review_score
+    FROM order_categories
+    GROUP BY product_category
+    HAVING COUNT(review_score) >= 500
+    ORDER BY average_review_score
+    LIMIT 5
+  compare: {order_matters: true, abs_tol: '0.0005'}
+  reference_result:
+    columns:
+    - {name: product_category, type: text}
+    - {name: average_review_score, type: number}
+    rows:
+    - [office_furniture, '3.6183689627870150']
+    - [uncategorized, '3.9117442668519805']
+    - [bed_bath_table, '3.9705787608718995']
+    - [telephony, '4.0031190019193858']
+    - [furniture_decor, '4.0092216317599250']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-021
+  question: Among sellers with at least 20 delivered orders, which 3 have the highest late delivery rate?
+  difficulty: hard
+  tags: [seller, delivery]
+  reference_sql: |
+    SELECT seller_id, (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate
+    FROM order_sellers
+    GROUP BY seller_id
+    HAVING COUNT(*) FILTER (WHERE is_delivered) >= 20
+    ORDER BY late_delivery_rate DESC
+    LIMIT 3
+  compare: {order_matters: true, abs_tol: '0.0005', allow_percent: true}
+  notes: 'Top 3, not 5: the 5th and 6th sellers tie at exactly 0.30.'
+  reference_result:
+    columns:
+    - {name: seller_id, type: text}
+    - {name: late_delivery_rate, type: number}
+    rows:
+    - [821fb029fc6e495ca4f08a35d51e53a5, '0.33333333333333333333']
+    - [ede0c03645598cdfc63ca8237acbe73d, '0.32558139534883720930']
+    - [ad781527c93d00d89a11eecd9dcad7c1, '0.31578947368421052632']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-022
+  question: What is the average weight in grams of products in the furniture_decor category?
+  difficulty: easy
+  tags: [product_category, aggregation]
+  reference_sql: |
+    SELECT AVG(weight_g) AS average_weight_g FROM products WHERE product_category = 'furniture_decor'
+  compare: {abs_tol: '0.01'}
+  reference_result:
+    columns:
+    - {name: average_weight_g, type: number}
+    rows:
+    - ['3008.2668423033496425']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-023
+  question: How much revenue came from products weighing more than 10 kg?
+  difficulty: medium
+  tags: [join, product_category]
+  reference_sql: |
+    SELECT SUM(i.revenue) AS revenue
+    FROM order_items AS i
+    JOIN products AS p ON p.product_id = i.product_id
+    WHERE p.weight_g > 10000
+  reference_result:
+    columns:
+    - {name: revenue, type: number}
+    rows:
+    - ['1750999.84']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-024
+  question: How many sellers have sold at least one item?
+  difficulty: easy
+  tags: [seller, aggregation]
+  reference_sql: |
+    SELECT COUNT(DISTINCT seller_id) AS sellers FROM order_items
+  notes: Counts sellers with any order item, all statuses.
+  reference_result:
+    columns:
+    - {name: sellers, type: integer}
+    rows:
+    - [3095]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-025
+  question: At which hour of the day are the most orders placed?
+  difficulty: medium
+  tags: [time_series, aggregation]
+  reference_sql: |
+    SELECT EXTRACT(HOUR FROM purchased_at) AS hour, COUNT(*) AS orders
+    FROM orders
+    GROUP BY EXTRACT(HOUR FROM purchased_at)
+    ORDER BY orders DESC
+    LIMIT 1
+  reference_result:
+    columns:
+    - {name: hour, type: number}
+    - {name: orders, type: integer}
+    rows:
+    - ['16', 6675]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-026
+  question: What is the average number of installments for credit card payments?
+  difficulty: easy
+  tags: [filtering, aggregation]
+  reference_sql: |
+    SELECT AVG(payment_installments) AS average_installments FROM order_payments WHERE payment_type = 'credit_card'
+  reference_result:
+    columns:
+    - {name: average_installments, type: number}
+    rows:
+    - ['3.5072726088938082']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-027
+  question: What percentage of 2017 revenue came from customers in SP?
+  difficulty: hard
+  tags: [customer, multi_step]
+  reference_sql: |
+    SELECT SUM(revenue) FILTER (WHERE customer_state = 'SP') / SUM(revenue) AS sp_revenue_share
+    FROM orders
+    WHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  reference_result:
+    columns:
+    - {name: sp_revenue_share, type: number}
+    rows:
+    - ['0.35859134352313750247']
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-028
+  question: How many orders are there in each order status?
+  difficulty: easy
+  tags: [aggregation]
+  reference_sql: |
+    SELECT order_status, COUNT(*) AS orders FROM orders GROUP BY order_status
+  reference_result:
+    columns:
+    - {name: order_status, type: text}
+    - {name: orders, type: integer}
+    rows:
+    - [shipped, 1107]
+    - [unavailable, 609]
+    - [invoiced, 314]
+    - [created, 5]
+    - [approved, 2]
+    - [processing, 301]
+    - [delivered, 96478]
+    - [canceled, 625]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-029
+  question: How many new customers made their first purchase in each month of 2017?
+  difficulty: hard
+  tags: [customer, time_series, multi_step]
+  reference_sql: |
+    WITH first_orders AS (
+      SELECT customer_unique_id, MIN(purchased_at) AS first_purchased_at
+      FROM orders
+      GROUP BY customer_unique_id
+    )
+    SELECT DATE_TRUNC('month', first_purchased_at) AS month, COUNT(*) AS new_customers
+    FROM first_orders
+    WHERE first_purchased_at >= '2017-01-01' AND first_purchased_at < '2018-01-01'
+    GROUP BY DATE_TRUNC('month', first_purchased_at)
+    ORDER BY month
+  compare: {order_matters: true}
+  notes: A customer's first order of any status counts as their first purchase.
+  reference_result:
+    columns:
+    - {name: month, type: timestamp}
+    - {name: new_customers, type: integer}
+    rows:
+    - ['2017-01-01T00:00:00', 764]
+    - ['2017-02-01T00:00:00', 1752]
+    - ['2017-03-01T00:00:00', 2636]
+    - ['2017-04-01T00:00:00', 2352]
+    - ['2017-05-01T00:00:00', 3596]
+    - ['2017-06-01T00:00:00', 3139]
+    - ['2017-07-01T00:00:00', 3894]
+    - ['2017-08-01T00:00:00', 4184]
+    - ['2017-09-01T00:00:00', 4130]
+    - ['2017-10-01T00:00:00', 4470]
+    - ['2017-11-01T00:00:00', 7304]
+    - ['2017-12-01T00:00:00', 5487]
+  verified_by: null
+  verified_on: null
+  verified_hash: null
+- id: dev-030
+  question: What is the median delivery time in days for delivered orders?
+  difficulty: medium
+  tags: [delivery, aggregation]
+  reference_sql: |
+    SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY delivery_days) AS median_delivery_days FROM orders
+  compare: {abs_tol: '0.01'}
+  reference_result:
+    columns:
+    - {name: median_delivery_days, type: number}
+    rows:
+    - ['10.22']
+  verified_by: null
+  verified_on: null
+  verified_hash: null

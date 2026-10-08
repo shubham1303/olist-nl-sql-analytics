@@ -10,7 +10,7 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0003](0003-llm-provider-and-model.md) | Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven | Accepted (endpoint/client detailed in 0016) |
 | [0004](0004-public-access-and-cost-controls.md) | Shared access code, throttling, request limits, $20 budget | Accepted |
 | [0005](0005-curated-analytics-schema-and-catalog.md) | Curated analytics views + one catalog as source of truth | Accepted |
-| [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted |
+| [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted (comparison detailed in 0017) |
 | [0007](0007-deterministic-chart-selection.md) | Deterministic chart selection from result shape | Accepted |
 | [0008](0008-excluded-services.md) | Services deliberately excluded until a measured need exists | Accepted |
 | [0009](0009-tooling-and-repo-conventions.md) | Tooling and repository conventions | Accepted |
@@ -21,5 +21,6 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted |
 | [0015](0015-model-visible-relations.md) | The model sees fact views and product attributes; lifetime summaries are hidden | Accepted |
 | [0016](0016-bedrock-client-and-structured-output.md) | Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies | Accepted |
+| [0017](0017-benchmark-comparison-and-verification.md) | Benchmark result comparison and verification pinning | Accepted |
 
 Template: [template.md](template.md)

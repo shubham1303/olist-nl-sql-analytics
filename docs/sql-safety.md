@@ -55,7 +55,7 @@ column with `sqlglot.optimizer.qualify`, and stage 7 analyses sqlglot scopes.
 | 5 | Relations: `analytics` schema, exposed catalog relations only | `UNAPPROVED_SCHEMA`, `UNAPPROVED_RELATION` |
 | 6 | Columns: each resolves to an exposed column | `UNAPPROVED_COLUMN`, `AMBIGUOUS_COLUMN` |
 | 7 | Joins and grain: catalog relationships, no fan-out | `INVALID_JOIN_PATH`, `FANOUT_RISK` |
-| 8 | Limits: LIMIT ≤ 1,000; adds `LIMIT 1001` when absent | `RESULT_LIMIT_EXCEEDED` |
+| 8 | Limits: LIMIT ≤ 1,001 (1,000 rows plus the truncation-signal row); adds `LIMIT 1001` when absent | `RESULT_LIMIT_EXCEEDED` |
 
 After stage 8:
 1. The SQL is **regenerated from the validated tree**: relations are schema-qualified,
@@ -81,6 +81,8 @@ For every accepted query:
 - No duplicate-sensitive aggregate reads a source whose rows a join has multiplied.
 - No attributed bridge outcome is aggregated without grouping by its attribution key.
 - The result returns at most 1,000 rows, plus one row that signals truncation.
+- It is **idempotent**: validating the output again gives the same SQL. The whole
+  accepted corpus is tested for this.
 
 ## What it does not guarantee
 
@@ -263,6 +265,7 @@ instructions in Phase 3.
 | `FANOUT_RISK` | Aggregate over rows a join has multiplied, or an unattributed bridge outcome. Also a warning for row-level repetition. |
 | `RESULT_LIMIT_EXCEEDED` | `LIMIT` above the configured maximum |
 | `QUERY_TOO_LARGE` | SQL longer than `NLSQL_MAX_SQL_CHARS` or more joins than `NLSQL_MAX_JOINS` |
+| `VALIDATOR_INTERNAL_ERROR` | The validator itself failed (a bug). Still fails closed. The traceback is logged, never returned, and the pipeline reports it as `validator_error`, not as a user mistake. |
 
 A result is a `ValidationResult` with these fields:
 

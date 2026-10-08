@@ -107,7 +107,7 @@ class GrainAnalyzer:
             self._output(scope)
         return self.warnings
 
-    # ------------------------------------------------------------------ scopes
+    # scopes
 
     def _output(self, scope: Scope) -> ScopeOutput:
         key = id(scope.expression)
@@ -181,7 +181,7 @@ class GrainAnalyzer:
 
         return self._describe_output(scope, select, sources, group_exprs, aggregated)
 
-    # ------------------------------------------------------------------ joins
+    # joins
 
     def _join(self, join: exp.Join, right: Source, left_sources: dict[str, Source]) -> None:
         on = join.args.get("on")
@@ -325,7 +325,7 @@ class GrainAnalyzer:
             return f"There is no approved relationship between {a} and {b}."
         return "Join through the relationship keys listed in the catalog."
 
-    # ------------------------------------------------------------- aggregates
+    # aggregates
 
     def _aggregates(self, scope: Scope) -> list[_Aggregate]:
         found: list[_Aggregate] = []
@@ -445,7 +445,7 @@ class GrainAnalyzer:
                     relation=relation.name,
                 )
 
-    # ----------------------------------------------------------------- output
+    # output
 
     def _describe_output(
         self,

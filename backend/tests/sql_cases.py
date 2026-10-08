@@ -682,7 +682,7 @@ REJECTED: list[Case] = [
     ),
     # --- limits
     Case("limit_too_high", "SELECT order_id FROM orders LIMIT 5000", E.RESULT_LIMIT_EXCEEDED),
-    Case("limit_just_over", "SELECT order_id FROM orders LIMIT 1001", E.RESULT_LIMIT_EXCEEDED),
+    Case("limit_just_over", "SELECT order_id FROM orders LIMIT 1002", E.RESULT_LIMIT_EXCEEDED),
     Case("limit_expression", "SELECT order_id FROM orders LIMIT 1 + 1", E.UNSUPPORTED_CONSTRUCT),
 ]
 

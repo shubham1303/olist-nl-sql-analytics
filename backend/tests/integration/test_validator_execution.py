@@ -38,7 +38,7 @@ def test_catalog_metrics_through_the_validator_match_direct_execution(reader: Co
         assert scalar(reader, result.sql) == scalar(reader, metric.sql()), metric.name
 
 
-# ----------------------------------------------- fan-out rejections are real errors
+# fan-out rejections are real errors
 
 
 def test_revenue_after_items_join_is_inflated(reader: Conn) -> None:
@@ -77,7 +77,7 @@ def test_safe_preaggregation_gives_the_true_answer(executor: PostgresExecutor) -
     assert paid == Decimal("16008872.12")
 
 
-# ------------------------------------------- the database blocks what the validator blocks
+# the database blocks what the validator blocks
 
 
 @pytest.mark.parametrize("case_id", DATABASE_BLOCKED)

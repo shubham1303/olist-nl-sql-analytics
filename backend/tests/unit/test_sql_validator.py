@@ -16,7 +16,7 @@ def validator() -> SqlValidator:
     return SqlValidator.from_catalog()
 
 
-# --------------------------------------------------------------------- corpus
+# corpus
 
 
 @pytest.mark.parametrize("case", ACCEPTED, ids=lambda c: c.id)
@@ -35,6 +35,15 @@ def test_rejected(validator: SqlValidator, case: Case) -> None:
     assert all(e.message for e in result.errors)
 
 
+@pytest.mark.parametrize("case", ACCEPTED, ids=lambda c: c.id)
+def test_validator_output_is_idempotent(validator: SqlValidator, case: Case) -> None:
+    first = validator.validate(case.sql)
+    assert first.sql is not None
+    second = validator.validate(first.sql)
+    assert second.ok and second.sql == first.sql
+    assert not second.limit_applied
+
+
 def test_corpus_ids_are_unique() -> None:
     ids = [c.id for c in ACCEPTED + REJECTED]
     assert len(ids) == len(set(ids))
@@ -42,7 +51,11 @@ def test_corpus_ids_are_unique() -> None:
 
 def test_corpus_covers_every_error_code() -> None:
     covered = {c.code for c in REJECTED}
-    assert covered >= set(ErrorCode) - {ErrorCode.QUERY_TOO_LARGE}  # tested below
+    # QUERY_TOO_LARGE and VALIDATOR_INTERNAL_ERROR are tested below.
+    assert covered >= set(ErrorCode) - {
+        ErrorCode.QUERY_TOO_LARGE,
+        ErrorCode.VALIDATOR_INTERNAL_ERROR,
+    }
 
 
 def test_every_catalog_metric_passes_the_validator(validator: SqlValidator) -> None:
@@ -55,7 +68,7 @@ def test_every_catalog_metric_passes_the_validator(validator: SqlValidator) -> N
             assert validator.validate(sql).ok, (metric.name, variant.relation)
 
 
-# ------------------------------------------------------------------- functions
+# functions
 
 
 EXAMPLES = {
@@ -95,7 +108,7 @@ def test_operator_nodes_never_borrow_a_column_name() -> None:
     assert function_name(regex) == "<RegexpLike>"
 
 
-# ------------------------------------------------------------ output and limits
+# output and limits
 
 
 def test_output_sql_is_schema_qualified_and_limited(validator: SqlValidator) -> None:
@@ -130,7 +143,8 @@ def test_union_gets_one_limit(validator: SqlValidator) -> None:
 def test_configured_row_limit_is_used() -> None:
     validator = SqlValidator.from_catalog(settings=Settings(max_result_rows=50))
     assert validator.validate("SELECT order_id FROM orders LIMIT 50").ok
-    assert validator.validate("SELECT order_id FROM orders LIMIT 51").codes == (
+    assert validator.validate("SELECT order_id FROM orders LIMIT 51").ok  # the fetch cap
+    assert validator.validate("SELECT order_id FROM orders LIMIT 52").codes == (
         ErrorCode.RESULT_LIMIT_EXCEEDED,
     )
     sql = validator.validate("SELECT order_id FROM orders").sql
@@ -165,7 +179,7 @@ def test_executed_sql_is_regenerated_without_comments(validator: SqlValidator) -
     assert "';'" in result.sql  # string literal content is preserved
 
 
-# ----------------------------------------------------------- result details
+# result details
 
 
 def test_parse_error_has_a_location(validator: SqlValidator) -> None:
@@ -228,4 +242,7 @@ def test_unexpected_internal_errors_fail_closed(
 
     monkeypatch.setattr(validator, "_check_functions", boom)
     result = validator.validate("SELECT order_id FROM orders")
-    assert not result.ok and result.codes == (ErrorCode.UNSUPPORTED_CONSTRUCT,)
+    assert not result.ok and result.sql is None
+    assert result.codes == (ErrorCode.VALIDATOR_INTERNAL_ERROR,)
+    assert result.internal_error
+    assert "bug" not in result.errors[0].message  # no internals in the message

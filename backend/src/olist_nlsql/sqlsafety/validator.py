@@ -16,6 +16,7 @@ schema-qualified relation names; the raw input string is never executed.
 """
 
 import difflib
+import logging
 import re
 
 import sqlglot
@@ -38,6 +39,8 @@ from olist_nlsql.sqlsafety.result import (
 )
 
 DIALECT = "postgres"
+
+logger = logging.getLogger(__name__)
 
 _WRITE_STATEMENTS: tuple[type[exp.Expr], ...] = (
     exp.Insert,
@@ -115,7 +118,7 @@ class SqlValidator:
     ) -> "SqlValidator":
         return cls(Policy.from_catalog(catalog or load_catalog(), settings or Settings()))
 
-    # ------------------------------------------------------------------ entry
+    # entry
 
     def validate(self, sql: str) -> ValidationResult:
         try:
@@ -133,14 +136,16 @@ class SqlValidator:
         except ValidationFailure as failure:
             return ValidationResult(status="rejected", sql=None, errors=failure.issues)
         except Exception as exc:  # anything unexpected must fail closed
+            # this is a bug in the validator, not bad SQL - log it and use a separate
+            # code so it doesn't get reported as the user's fault
+            logger.exception("sql validator internal error")
             return ValidationResult(
                 status="rejected",
                 sql=None,
                 errors=(
                     Issue(
-                        ErrorCode.UNSUPPORTED_CONSTRUCT,
-                        "The query uses a construct the validator cannot analyse safely. "
-                        "Rewrite it with plain SELECT, JOIN, WHERE, GROUP BY and ORDER BY.",
+                        ErrorCode.VALIDATOR_INTERNAL_ERROR,
+                        "The SQL validator failed internally, so the query was not run.",
                         {"exception": type(exc).__name__},
                     ),
                 ),
@@ -153,7 +158,7 @@ class SqlValidator:
             relations=tuple(sorted(relations)),
         )
 
-    # ---------------------------------------------------------- 1. parse
+    # 1. parse
 
     def _parse(self, sql: str) -> exp.Expr:
         limit = self.policy.limits.max_sql_chars
@@ -203,7 +208,7 @@ class SqlValidator:
             tree = tree.this  # a parenthesised top-level query
         return tree
 
-    # ---------------------------------------------------------- 2. statement
+    # 2. statement
 
     def _check_statement(self, tree: exp.Expr) -> None:
         if isinstance(tree, (exp.Select, exp.Union)):
@@ -228,7 +233,7 @@ class SqlValidator:
             )
         )
 
-    # ---------------------------------------------------------- 3. constructs
+    # 3. constructs
 
     def _check_constructs(self, tree: exp.Expr) -> None:
         issues: list[Issue] = []
@@ -330,7 +335,7 @@ class SqlValidator:
         if issues:
             raise ValidationFailure(*_dedupe(issues))
 
-    # ---------------------------------------------------------- 4. functions
+    # 4. functions
 
     def _check_functions(self, tree: exp.Expr) -> None:
         issues: list[Issue] = []
@@ -380,7 +385,7 @@ class SqlValidator:
         if issues:
             raise ValidationFailure(*_dedupe(issues))
 
-    # ---------------------------------------------------------- 5. relations
+    # 5. relations
 
     def _check_relations(self, tree: exp.Expr) -> set[str]:
         catalog_names = set(self.policy.relations) | set(self.policy.hidden_relations)
@@ -453,7 +458,7 @@ class SqlValidator:
             relation=name,
         )
 
-    # ---------------------------------------------------------- 6. columns
+    # 6. columns
 
     def _qualify(self, tree: exp.Expr, relations: set[str]) -> exp.Expr:
         try:
@@ -503,7 +508,7 @@ class SqlValidator:
             {"column": column},
         )
 
-    # ---------------------------------------------------------- 8. limits
+    # 8. limits
 
     def _apply_limit(self, tree: exp.Expr) -> bool:
         max_rows = self.policy.limits.max_rows
@@ -520,7 +525,9 @@ class SqlValidator:
                         clause,
                     )
                 )
-            if arg == "limit" and int(value.this) > max_rows:
+            # max_rows + 1 is the fetch cap (the extra row signals truncation), so the
+            # validator's own output re-validates unchanged.
+            if arg == "limit" and int(value.this) > max_rows + 1:
                 raise ValidationFailure(
                     _issue(
                         ErrorCode.RESULT_LIMIT_EXCEEDED,
@@ -537,7 +544,7 @@ class SqlValidator:
         tree.set("limit", exp.Limit(expression=exp.Literal.number(max_rows + 1)))
         return True
 
-    # ---------------------------------------------------------- output
+    # output
 
     def _qualify_relation_names(self, tree: exp.Expr) -> None:
         """Schema-qualify catalog relations so execution never depends on search_path."""

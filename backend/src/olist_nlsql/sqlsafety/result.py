@@ -23,6 +23,8 @@ class ErrorCode(StrEnum):
     FANOUT_RISK = "FANOUT_RISK"
     RESULT_LIMIT_EXCEEDED = "RESULT_LIMIT_EXCEEDED"
     QUERY_TOO_LARGE = "QUERY_TOO_LARGE"
+    # Not a problem with the SQL: the validator itself failed. Still fails closed.
+    VALIDATOR_INTERNAL_ERROR = "VALIDATOR_INTERNAL_ERROR"
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +59,10 @@ class ValidationResult:
     @property
     def codes(self) -> tuple[ErrorCode, ...]:
         return tuple(e.code for e in self.errors)
+
+    @property
+    def internal_error(self) -> bool:
+        return ErrorCode.VALIDATOR_INTERNAL_ERROR in self.codes
 
 
 class ValidationFailure(Exception):

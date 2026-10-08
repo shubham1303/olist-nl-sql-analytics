@@ -44,7 +44,7 @@ def relation_doc(doc: dict[str, Any], name: str) -> dict[str, Any]:
     return next(r for r in doc["relations"] if r["name"] == name)
 
 
-# ---------------------------------------------------------------- packaged catalog
+# packaged catalog
 
 
 def test_packaged_catalog_loads() -> None:
@@ -151,7 +151,7 @@ def test_min_and_max_are_the_only_duplicate_safe_numeric_aggregates() -> None:
     }  # fmt: skip
 
 
-# ---------------------------------------------------------------- strict parsing
+# strict parsing
 
 
 def test_unknown_key_is_rejected(document: dict[str, Any]) -> None:

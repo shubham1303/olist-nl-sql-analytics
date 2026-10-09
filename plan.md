@@ -192,6 +192,16 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
+### Phase 5 (in progress, started 2026-10-09)
+
+- Changes and before/after dev runs are logged in [eval/CHANGELOG.md](eval/CHANGELOG.md).
+- **Prompt v2** (dev-012): ranking by a NULL-able aggregate must filter `is_revenue_order` or use `NULLS LAST`; same caveat on the `revenue` metric. Dev **29/30 → 30/30** ([20261009T091218Z](eval/results/20261009T091218Z_dev_us-anthropic-claude-sonnet-4-6.md)), no regressions.
+
+**Next steps:**
+1. Dev is saturated at 30/30 on a single run. Consider repeat runs to measure variance, and harder or human-written dev items, before more prompt changes.
+2. Optional second model via config.
+3. One held-out checkpoint at the end of the phase.
+
 ### Phase 4 (done, 2026-10-09)
 
 **Where it stands:** milestone met; dev baseline and one held-out checkpoint committed.

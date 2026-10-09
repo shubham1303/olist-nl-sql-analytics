@@ -33,8 +33,9 @@ pipeline + CLI. I'm still waiting on Bedrock model access, so right now the pipe
 runs end to end only with the fake model (`--fake-sql`). The live smoke test skips
 itself until access comes through.
 
-Next up is an eval set of 50 questions (30 dev / 20 held out) so I can actually
-measure accuracy, then a small React UI, then deploying to AWS (Lambda + Aurora
+Phase 4 is in progress: the eval harness and 50 drafted questions (30 dev / 20 held
+out) are in [eval/](eval/README.md). No accuracy numbers yet, because every reference
+answer needs a human check first. After that comes a small React UI, then deploying to AWS (Lambda + Aurora
 Serverless). The full roadmap is in [plan.md](plan.md), and the reasoning behind
 most decisions is written up as ADRs in [docs/adr](docs/adr/README.md).
 

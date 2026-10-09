@@ -4,7 +4,7 @@ No Bedrock, no database. Covers every flow and the security invariants that can 
 checked without infrastructure.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 import pytest
@@ -12,6 +12,7 @@ import pytest
 from olist_nlsql.config import Settings
 from olist_nlsql.db import ColumnInfo, QueryExecutionError, QueryResult, QueryTimeoutError
 from olist_nlsql.llm import ModelError
+from olist_nlsql.llm.client import ModelReply, ModelRequest
 from olist_nlsql.llm.fake import FakeModelClient, reply_json
 from olist_nlsql.llm.prompts import PROMPT_VERSION
 from olist_nlsql.pipeline import NlSqlPipeline, PipelineResult, to_dict
@@ -80,6 +81,29 @@ def test_first_pass_answer() -> None:
     assert result.columns == (ColumnInfo("revenue", "number"),)
     assert result.rows == ((Decimal("13494400.74"),),) and result.row_count == 1
     assert result.error is None
+
+
+def test_token_counts_including_cache_survive_validation() -> None:
+    @dataclass
+    class CachingModel(FakeModelClient):
+        def complete(self, request: ModelRequest) -> ModelReply:
+            reply = super().complete(request)
+            return replace(reply, input_tokens=400, cache_read_tokens=5600, cache_write_tokens=7)
+
+    settings = Settings()
+    model = CachingModel([reply_json(GOOD)])
+    pipeline = NlSqlPipeline(
+        model, SqlValidator.from_catalog(settings=settings), RecordingExecutor(), settings
+    )
+    result = pipeline.ask("What was total revenue?")
+    attempt = result.attempts[0]
+    assert attempt.validation_ms is not None  # rebuilt by the validation step
+    assert (attempt.input_tokens, attempt.cache_read_tokens, attempt.cache_write_tokens) == (
+        400,
+        5600,
+        7,
+    )
+    assert to_dict(result)["attempts"][0]["cache_read_tokens"] == 5600  # type: ignore[index]
 
 
 def test_assumptions_are_preserved() -> None:

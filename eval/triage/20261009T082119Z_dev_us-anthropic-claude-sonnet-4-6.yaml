@@ -1,0 +1,3 @@
+﻿dev-012:
+  category: wrong_filter_or_time_window
+  note: No is_revenue_order filter or NULLS LAST, so sellers with NULL 2018 revenue (all orders canceled) sort first in ORDER BY DESC. Catalog says revenue needs no filter, which only holds for totals. Phase 5 candidate.

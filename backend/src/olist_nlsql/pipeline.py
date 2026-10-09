@@ -10,13 +10,13 @@ import json
 import logging
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from olist_nlsql.catalog import Catalog, load_catalog
 from olist_nlsql.config import Settings
 from olist_nlsql.db import ColumnInfo, QueryExecutionError, QueryExecutor, QueryTimeoutError
-from olist_nlsql.llm.client import ModelClient, ModelError, ModelRequest
+from olist_nlsql.llm.client import ModelClient, ModelError, ModelReply, ModelRequest
 from olist_nlsql.llm.output import OUTPUT_SCHEMA, Generation, OutputParseError, parse_generation
 from olist_nlsql.llm.prompts import (
     PROMPT_VERSION,
@@ -55,7 +55,7 @@ class Attempt:
 
     kind: AttemptKind
     model_ms: float
-    input_tokens: int = 0
+    input_tokens: int = 0  # uncached input; the cached system prompt is counted below
     output_tokens: int = 0
     sql: str | None = None  # SQL as the model wrote it (never executed)
     validation_ms: float | None = None
@@ -63,6 +63,8 @@ class Attempt:
     outcome: Literal["accepted", "rejected", "unanswerable", "model_error", "parse_error"] = (
         "accepted"
     )
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +110,26 @@ class PipelineResult:
     @property
     def row_count(self) -> int:
         return len(self.rows)
+
+
+def _attempt(
+    kind: AttemptKind,
+    model_ms: float,
+    reply: ModelReply,
+    *,
+    sql: str | None = None,
+    outcome: Literal["accepted", "unanswerable", "parse_error"] = "accepted",
+) -> Attempt:
+    return Attempt(
+        kind,
+        model_ms,
+        reply.input_tokens,
+        reply.output_tokens,
+        sql=sql,
+        outcome=outcome,
+        cache_read_tokens=reply.cache_read_tokens,
+        cache_write_tokens=reply.cache_write_tokens,
+    )
 
 
 def _ms(since: float) -> float:
@@ -204,18 +226,13 @@ class _Run:
         try:
             generation = parse_generation(reply.text)
         except OutputParseError as exc:
-            self.attempts.append(
-                Attempt(
-                    kind, model_ms, reply.input_tokens, reply.output_tokens, outcome="parse_error"
-                )
-            )
+            self.attempts.append(_attempt(kind, model_ms, reply, outcome="parse_error"))
             return self._fail("generation_failed", "parsing", "OUTPUT_PARSE_ERROR", str(exc))
         self.attempts.append(
-            Attempt(
+            _attempt(
                 kind,
                 model_ms,
-                reply.input_tokens,
-                reply.output_tokens,
+                reply,
                 sql=generation.sql or None,
                 outcome="accepted" if generation.can_answer else "unanswerable",
             )
@@ -227,13 +244,8 @@ class _Run:
         result = self.p.validator.validate(sql)
         elapsed = _ms(started)
         self.validation_ms += elapsed
-        last = self.attempts[-1]
-        self.attempts[-1] = Attempt(
-            last.kind,
-            last.model_ms,
-            last.input_tokens,
-            last.output_tokens,
-            sql=last.sql,
+        self.attempts[-1] = replace(
+            self.attempts[-1],
             validation_ms=elapsed,
             validation_codes=tuple(str(c) for c in result.codes),
             outcome="accepted" if result.ok else "rejected",
@@ -402,6 +414,8 @@ def to_dict(result: PipelineResult) -> dict[str, object]:
                 "validation_ms": a.validation_ms,
                 "input_tokens": a.input_tokens,
                 "output_tokens": a.output_tokens,
+                "cache_read_tokens": a.cache_read_tokens,
+                "cache_write_tokens": a.cache_write_tokens,
             }
             for a in result.attempts
         ],

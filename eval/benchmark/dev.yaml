@@ -522,7 +522,7 @@ items:
     columns:
     - {name: average_installments, type: number}
     rows:
-    - ['3.5072726088938082']
+    - ['3.5071554137639169']
   verified_by: null
   verified_on: null
   verified_hash: null

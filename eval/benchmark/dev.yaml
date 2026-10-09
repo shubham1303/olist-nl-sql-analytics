@@ -177,7 +177,7 @@ items:
   verified_on: null
   verified_hash: null
 - id: dev-010
-  question: How many distinct orders used each payment method?
+  question: How many orders included at least one payment of each payment type?
   difficulty: medium
   tags: [aggregation]
   reference_sql: |
@@ -398,27 +398,30 @@ items:
   verified_hash: null
 - id: dev-020
   question: Among product categories with at least 500 reviewed orders, which 5 have the lowest average
-    review score?
+    review score? Ignore products without a category.
   difficulty: hard
   tags: [product_category, review]
   reference_sql: |
     SELECT product_category, AVG(review_score) AS average_review_score
     FROM order_categories
+    WHERE product_category <> 'uncategorized'
     GROUP BY product_category
     HAVING COUNT(review_score) >= 500
     ORDER BY average_review_score
     LIMIT 5
   compare: {order_matters: true, abs_tol: '0.0005'}
+  notes: '''uncategorized'' is the label for products without a category, so it is excluded. 5th vs 6th:
+    4.026 vs 4.038, no tie.'
   reference_result:
     columns:
     - {name: product_category, type: text}
     - {name: average_review_score, type: number}
     rows:
     - [office_furniture, '3.6183689627870150']
-    - [uncategorized, '3.9117442668519805']
     - [bed_bath_table, '3.9705787608718995']
     - [telephony, '4.0031190019193858']
     - [furniture_decor, '4.0092216317599250']
+    - [computers_accessories, '4.0255677545495563']
   verified_by: null
   verified_on: null
   verified_hash: null
@@ -483,13 +486,14 @@ items:
   difficulty: easy
   tags: [seller, aggregation]
   reference_sql: |
-    SELECT COUNT(DISTINCT seller_id) AS sellers FROM order_items
-  notes: Counts sellers with any order item, all statuses.
+    SELECT COUNT(DISTINCT seller_id) AS sellers FROM order_items WHERE is_revenue_order
+  notes: '''Sold'' follows the catalog metric items_sold: revenue orders only (excludes canceled and unavailable).
+    Any order item: 3,095; delivered only: 2,970.'
   reference_result:
     columns:
     - {name: sellers, type: integer}
     rows:
-    - [3095]
+    - [3053]
   verified_by: null
   verified_on: null
   verified_hash: null

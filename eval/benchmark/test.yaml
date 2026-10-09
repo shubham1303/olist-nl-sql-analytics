@@ -14,9 +14,9 @@ items:
     - {name: delivered_orders, type: integer}
     rows:
     - [96478]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: e247cd325caee12e00fb0378895617ca387473d2ea4580c90e2dfed70ee7a7ff
 - id: test-002
   question: What was merchandise revenue in 2018?
   difficulty: easy
@@ -30,9 +30,9 @@ items:
     - {name: revenue, type: number}
     rows:
     - ['7341182.41']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 80c053d555fa179ee3a52be95fe53aab0adcc39e9cb0735402deb35a336ab046
 - id: test-003
   question: What is the average order value?
   difficulty: easy
@@ -45,9 +45,9 @@ items:
     - {name: average_order_value, type: number}
     rows:
     - ['137.4189221886169920']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: ce1116c701a91fa7e53a1683179b6b37236a6692c77540209c1a66c96a783c59
 - id: test-004
   question: What was revenue in each month of 2017?
   difficulty: medium
@@ -76,9 +76,9 @@ items:
     - ['2017-10-01', '660179.62']
     - ['2017-11-01', '1003862.14']
     - ['2017-12-01', '742183.79']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 1bed543e4b5b9b726873a4f764557d0c285d170997c6c0584eab54fdf6643842
 - id: test-005
   question: Which 10 customer cities placed the most orders?
   difficulty: medium
@@ -105,9 +105,9 @@ items:
     - [salvador, 1245]
     - [guarulhos, 1189]
     - [sao bernardo do campo, 938]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 79457edb4dea4667f8d6e67ed85eec4c281d9b9a8751aacb7ae01a07167af45b
 - id: test-006
   question: Which 5 product categories sold the most units in 2017?
   difficulty: medium
@@ -130,9 +130,9 @@ items:
     - [sports_leisure, 4070]
     - [health_beauty, 3661]
     - [computers_accessories, 3077]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 76793d7c47270afdd5fa235a6754bb0b1291286c6d66f99811731aaa80ad0281
 - id: test-007
   question: Among customer states with at least 1,000 delivered orders, which 5 have the highest late
     delivery rate?
@@ -156,47 +156,48 @@ items:
     - [RJ, '0.12105263157894736842']
     - [ES, '0.10726817042606516291']
     - [PE, '0.09604519774011299435']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: c0d8b2c408fb566639a5fd01654be630ecb13e490dab03de21b7242efe5a79e1
 - id: test-008
   question: What is the average review score for orders delivered late compared with orders delivered
     on time or early?
   difficulty: medium
   tags: [review, delivery]
   reference_sql: |
-    SELECT is_late, AVG(review_score) AS average_review_score
+    SELECT AVG(review_score) AS average_review_score
     FROM orders
     WHERE is_late IS NOT NULL
     GROUP BY is_late
   compare: {abs_tol: '0.0005'}
+  notes: Label column omitted so any group label (boolean or text) matches as an extra column. Late =
+    2.2705, on time or early = 4.2904.
   reference_result:
     columns:
-    - {name: is_late, type: boolean}
     - {name: average_review_score, type: number}
     rows:
-    - [false, '4.2903860559238845']
-    - [true, '2.2704905187274722']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+    - ['4.2903860559238845']
+    - ['2.2704905187274722']
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: d2c4c8bf716b296686db2345fe478f760cae4ba9cdf6ee03fa4116f344bae7b8
 - id: test-009
-  question: How many distinct customers bought something in 2018?
+  question: How many distinct customers placed an order in 2018?
   difficulty: easy
   tags: [customer, filtering]
   reference_sql: |
     SELECT COUNT(DISTINCT customer_unique_id) AS customers
     FROM orders
     WHERE purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'
-  notes: Any order status counts as buying.
+  notes: Any order status counts as placing an order.
   reference_result:
     columns:
     - {name: customers, type: integer}
     rows:
     - [52749]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: afdb8b69e3ff40fd839a915d1c7b4497da98a3fd37c72dbe72cb727befd3dc1a
 - id: test-010
   question: What share of reviewed orders received a 1 or 2 star review?
   difficulty: easy
@@ -210,9 +211,9 @@ items:
     - {name: low_rating_rate, type: number}
     rows:
     - ['0.14688921994871950787']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: ed51cadd4c96b9581f2d7cbe58e7f83f8d1eaf7efb05c5af9e90fa55ebe25a30
 - id: test-011
   question: Among sellers with at least 20 delivered orders, which 5 have the lowest average review score?
   difficulty: hard
@@ -235,9 +236,9 @@ items:
     - [d71d863e5ef30d94e440c11be17dcd8f, '2.9615384615384615']
     - [54965bbe3e4f07ae045b90b0b8541f52, '3.0000000000000000']
     - [a49928bcdf77c55c6d6e05e09a9b4ca5, '3.0102040816326531']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: f56edde425cea377e29e32076784a5f26057e794a21d5607d49929a6c273a790
 - id: test-012
   question: Which 5 seller states generated the most revenue?
   difficulty: medium
@@ -259,9 +260,9 @@ items:
     - [MG, '1001944.76']
     - [RJ, '837466.37']
     - [SC, '624002.96']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 880ef34179a767afa40ae932d1695cdc857a4b0b3bd5bac131e36f4b7f8b82ce
 - id: test-013
   question: What percentage of orders were mainly paid by boleto?
   difficulty: medium
@@ -276,9 +277,9 @@ items:
     - {name: boleto_share, type: number}
     rows:
     - ['0.19895214247644331815']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: f54754520f9d90c245cd77c65bde41e66eed015984dab73232cfa48e7952d6db
 - id: test-014
   question: What were the top 3 product categories by revenue in each of 2017 and 2018?
   difficulty: hard
@@ -309,9 +310,9 @@ items:
     - ['2018', health_beauty, '770002.81']
     - ['2018', watches_gifts, '708305.95']
     - ['2018', bed_bath_table, '537514.13']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: d8c68c1a65c3f288f603f5ff7fe13ba12ce086f3ce4faf0887d460f0a64064dd
 - id: test-015
   question: How many orders contained items from more than one seller?
   difficulty: medium
@@ -323,9 +324,9 @@ items:
     - {name: orders, type: integer}
     rows:
     - [1278]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: ba639894dee8393154532e0e70fe608da3a4c9b160252b636fe25c64f7994297
 - id: test-016
   question: On average, how many items does an order contain?
   difficulty: medium
@@ -338,11 +339,11 @@ items:
     - {name: average_items_per_order, type: number}
     rows:
     - ['1.1415696697522378']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 2c07a6bf3ee1ad58894fdf5661dbb98c5e386273178b59d4cfddc2e69ca06950
 - id: test-017
-  question: How much did revenue grow from January–August 2017 to January–August 2018?
+  question: By what percentage did revenue grow from January–August 2017 to January–August 2018?
   difficulty: hard
   tags: [time_series, multi_step]
   reference_sql: |
@@ -355,9 +356,9 @@ items:
     - {name: growth_rate, type: number}
     rows:
     - ['1.3827954882372250']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 63c2830790eb3be6d800a65e9e1634a57fff9d822a2b4ef6eefba142372180f6
 - id: test-018
   question: Among product categories with at least 1,000 delivered orders, which 5 have the longest average
     delivery time?
@@ -381,9 +382,9 @@ items:
     - [garden_tools, '13.6335846867749420']
     - [computers_accessories, '13.1721396844846071']
     - [furniture_decor, '13.0745124464880292']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 75f2eb10aa16795dca897b4e207da01f595e25cb72a35c2d05c8aed81de36f01
 - id: test-019
   question: How many products have no category?
   difficulty: easy
@@ -395,9 +396,9 @@ items:
     - {name: products, type: integer}
     rows:
     - [610]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: c84e18035f6db3c3389946ee780a06c42d96194dea9c281f973cb7bfde800272
 - id: test-020
   question: How many customers have three or more delivered orders?
   difficulty: hard
@@ -414,6 +415,6 @@ items:
     - {name: customers, type: integer}
     rows:
     - [228]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 7a53f88dceed1414ee5568c7a156844b41d2dcbe8a0e4d0807ca0d2d32796f3e

@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 4 in progress:** harness built, 50 items drafted and snapshotted, human verification pending. Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phase 4 in progress:** dev baseline 29/30 (Sonnet 4.6); test items to verify, then one held-out run. Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-10-08
 
 ---
@@ -192,14 +192,23 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 4 (in progress, 2026-10-08)
+### Phase 4 (in progress, updated 2026-10-09)
+
+**Where it stands:** dev half done, held-out half not started.
 
 - Harness in `olist_nlsql.evaluation`: strict benchmark loader, comparator, runner, failure categoriser, markdown report with triage overrides; CLI `python -m olist_nlsql.evaluation check|snapshot|show|verify|run|report` ([eval/README.md](eval/README.md)).
 - ADR 0017: comparison rules (names/column order ignored, extra columns allowed, percent form for rates, month normalisation, per-item tolerances) and verification pinned to a content hash.
-- 50 items drafted (30 dev / 20 test) across all ADR 0006 areas and difficulties; all reference SQL passes the validator; ranked items checked for ties at the cut-off (dev-012 NULL-first ordering and a dev-021 tie fixed while drafting).
-- Snapshots were taken on a build from Olist's GitHub copy of the dataset (Kaggle blocked in that environment). It matches the pinned files except zip-code formatting and R$4,689.90 of freight; no item uses either. **Re-run `snapshot` on a Kaggle build before verifying.**
-- Harness self-test (`run --fake-reference`): 50/50 correct. 0 items verified, so nothing is scored yet.
-- Remaining for the milestone: human verification of all 50 items → baseline dev run with Bedrock → one held-out checkpoint run.
+- 50 items (30 dev / 20 test) across all ADR 0006 areas and difficulties. Snapshots taken on the pinned Kaggle build. Review changed dev-010 (wording), dev-020 (exclude `uncategorized`) and dev-024 ("sold" = revenue orders, 3,053).
+- **All 30 dev items human-verified** (Shubham More). **Test items: 0/20 verified.**
+- **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. ADR 0003 still names Sonnet 5; if 4.6 becomes the official model, record that in a new ADR.
+- Live fixes from the first runs: the parser keeps `assumptions`/`metrics_used` sent as (possibly malformed) text instead of failing the question; prompt-cache tokens are now recorded.
+- **First dev baseline:** [20261009T082119Z](eval/results/20261009T082119Z_dev_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **29/30 correct**. Miss: dev-012, triaged `wrong_filter_or_time_window` (no revenue-order filter, so NULL-revenue sellers sort first in `ORDER BY DESC`).
+- Caveat for reporting: questions were drafted with Claude's help and are answered by a Claude model; references are human-verified, but a few human-written test questions would strengthen the held-out result.
+
+**Next steps, in order:**
+1. Verify the 20 test items (`show --split test …`, then `verify`), same checks as dev.
+2. One held-out checkpoint: `run --split test --checkpoint "end of phase 4 baseline"`; commit the record. Phase 4 is then done.
+3. Phase 5 (dev only): catalog/prompt line saying rankings by revenue must filter `is_revenue_order` or use `NULLS LAST` (from dev-012); re-run dev and compare.
 
 ### Phase 3 (done, 2026-09-24)
 

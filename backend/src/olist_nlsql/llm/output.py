@@ -2,7 +2,9 @@
 
 The schema is the ``input_schema`` of the ``submit_answer`` tool (llm/bedrock.py).
 Bedrock doesn't support structured outputs for Sonnet 5 yet, so nothing actually
-enforces the schema on their side. This parser is the real check.
+enforces the schema on their side. This parser is the real check: strict on the
+fields that drive execution (can_answer, sql) and lenient only on display text
+(assumptions, metrics_used), see _strings.
 """
 
 import contextlib
@@ -57,11 +59,23 @@ class Generation:
 
 
 def _strings(value: object, field: str) -> tuple[str, ...]:
-    # Without schema enforcement the model sometimes sends an array field as its JSON
-    # text ('["a", "b"]'). That is unambiguous, so decode it; anything else is an error.
-    if isinstance(value, str) and value.strip().startswith("["):
+    """A list of display strings (assumptions, metric names).
+
+    Without schema enforcement the model sometimes sends the array as text: valid JSON
+    ('["a", "b"]') or not ('["Best" means ...]', inner quotes unescaped). These fields are
+    only displayed, never executed, so text is kept rather than failing the question:
+    decoded when it is a JSON list of strings, otherwise kept whole as one entry.
+    """
+    if isinstance(value, str):
+        text = value.strip()
         with contextlib.suppress(json.JSONDecodeError):
-            value = json.loads(value)
+            decoded = json.loads(text)
+            if isinstance(decoded, list):
+                value = decoded
+        if isinstance(value, str):
+            if text.startswith("[") and text.endswith("]"):
+                text = text[1:-1].strip()
+            value = [text] if text else []
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
         got = json.dumps(value)[:80]
         raise OutputParseError(f"{field} must be a list of strings, got {got}")

@@ -45,9 +45,26 @@ def test_parse_accepts_an_array_sent_as_json_text() -> None:
     assert g.assumptions == ("Best = highest average.",)
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        # seen from Sonnet 4.6 on Bedrock: array as text with unescaped inner quotes
+        ('["Best" means highest total revenue]', ('"Best" means highest total revenue',)),
+        ("one assumption", ("one assumption",)),
+        ("[]", ()),
+        ("  ", ()),
+    ],
+)
+def test_parse_keeps_display_text_sent_as_a_non_json_string(
+    value: str, expected: tuple[str, ...]
+) -> None:
+    reply = {**json.loads(reply_json("SELECT 1")), "assumptions": value}
+    assert parse_generation(json.dumps(reply)).assumptions == expected
+
+
 def test_parse_error_shows_the_bad_value() -> None:
-    reply = {**json.loads(reply_json("SELECT 1")), "metrics_used": "revenue"}
-    with pytest.raises(OutputParseError, match='got "revenue"'):
+    reply = {**json.loads(reply_json("SELECT 1")), "metrics_used": 7}
+    with pytest.raises(OutputParseError, match="got 7"):
         parse_generation(json.dumps(reply))
 
 
@@ -66,9 +83,8 @@ def test_parse_unanswerable_reply_drops_sql() -> None:
         reply_json("SELECT 1")[:-1] + ', "chart": "bar"}',  # extra key
         reply_json(""),  # can_answer true but no SQL
         json.dumps({**json.loads(reply_json("SELECT 1")), "can_answer": "yes"}),
-        json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "one"}),
-        json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "[not json"}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "[1, 2]"}),
+        json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": {"a": 1}}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "sql": ["SELECT 1"]}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "interpretation": " "}),
     ],

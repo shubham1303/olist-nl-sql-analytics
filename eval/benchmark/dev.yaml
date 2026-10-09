@@ -197,7 +197,7 @@ items:
     - [voucher, 3866]
   verified_by: Shubham More
   verified_on: '2026-10-09'
-  verified_hash: 4e08a002b95e86dc582f40401649d62601a8cffc9d8e5216a66af08122ed734e
+  verified_hash: 7d803d3efd0307b910ee6c5f9c3fbb239a2a177b28d8279c263769f14196b2ea
 - id: dev-011
   question: Which 5 customer states have the longest average delivery time?
   difficulty: medium
@@ -422,9 +422,9 @@ items:
     - [telephony, '4.0031190019193858']
     - [furniture_decor, '4.0092216317599250']
     - [computers_accessories, '4.0255677545495563']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 82536d93e2fc35d3ab7a4a21e99743a2d54466f179a2548ec2c5adf6748ad3e8
 - id: dev-021
   question: Among sellers with at least 20 delivered orders, which 3 have the highest late delivery rate?
   difficulty: hard
@@ -494,9 +494,9 @@ items:
     - {name: sellers, type: integer}
     rows:
     - [3053]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 043e081d67929a0f2126a2a3ae79ce396dec98e48e0aa262353a7b0f1b8fc25a
 - id: dev-025
   question: At which hour of the day are the most orders placed?
   difficulty: medium

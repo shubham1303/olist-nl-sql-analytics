@@ -65,7 +65,7 @@ execution error) aren't repaired, because the SQL was valid.
 ## The prompt
 
 The system prompt is built deterministically from the catalog
-(`PROMPT_VERSION = "v1"`). It's identical on both calls, so it's marked for prompt
+(`PROMPT_VERSION = "v2"`). It's identical on both calls, so it's marked for prompt
 caching. It has eight sections:
 
 | Section | Contents | Size |

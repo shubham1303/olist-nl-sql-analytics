@@ -14,7 +14,7 @@ from olist_nlsql.config import Settings
 from olist_nlsql.sqlsafety import ErrorCode, Issue
 
 # Bump whenever prompt text or structure changes, so evaluation runs can be compared.
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 
 _INTRO = """\
 You translate business questions about the Olist Brazilian e-commerce marketplace into \
@@ -32,6 +32,7 @@ _SQL_RULES = """\
 - Use only these functions: {functions}. Casts: {casts}.
 - No NOW(), CURRENT_DATE or other "today" functions: the data ends in 2018. Use explicit dates.
 - Results are capped at {max_rows} rows. For rankings use ORDER BY with LIMIT.
+- PostgreSQL sorts NULLs first under ORDER BY ... DESC. When ranking by an aggregate that can be NULL for some groups (e.g. SUM(revenue) for a seller whose orders were all canceled), filter WHERE is_revenue_order or add NULLS LAST.
 - Prefer the simplest correct query. Avoid joins the question does not need."""
 
 _BUSINESS_RULES = """\

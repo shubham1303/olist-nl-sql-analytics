@@ -378,6 +378,9 @@ metrics:
       - Includes orders not yet delivered (shipped, invoiced, processing, approved); filter
         is_delivered for delivered revenue.
       - Revenue is booked on the purchase date, not the delivery date.
+      - Grouped by seller, category, customer or place, a group with no revenue orders has NULL
+        revenue, which sorts first under ORDER BY ... DESC; for rankings filter is_revenue_order
+        or add NULLS LAST.
     rationale: Item price is the only money measure that can be attributed exactly to products,
       categories and sellers, so revenue adds up the same way at every grain. Payments include
       freight and installment interest and cannot be split by item.

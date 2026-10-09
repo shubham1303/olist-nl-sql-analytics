@@ -14,9 +14,9 @@ items:
     - {name: orders, type: integer}
     rows:
     - [99441]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 1bebc8a32b2c9b2839a532d695b6314305db2339d450fc176414ebdc97176b36
 - id: dev-002
   question: What was total merchandise revenue in 2017?
   difficulty: easy
@@ -30,9 +30,9 @@ items:
     - {name: revenue, type: number}
     rows:
     - ['6108492.27']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: d8ad42765ce8a9bfd8c80370abdd59b70fb9dd01cb644a44fc0f78d936693d79
 - id: dev-003
   question: How many orders were canceled?
   difficulty: easy
@@ -45,9 +45,9 @@ items:
     - {name: canceled_orders, type: integer}
     rows:
     - [625]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 6589d554bbb8f971664443ff097095867dbc7a9d3770a2fb7c8fd59ffebd7f96
 - id: dev-004
   question: How many unique customers have placed an order?
   difficulty: easy
@@ -59,9 +59,9 @@ items:
     - {name: customers, type: integer}
     rows:
     - [96096]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 30f8e986db0d397be4ed7e696d3c50ab03043d5094c9533c0091b86d8b83d9ed
 - id: dev-005
   question: What is the average review score across all reviewed orders?
   difficulty: easy
@@ -74,9 +74,9 @@ items:
     - {name: average_review_score, type: number}
     rows:
     - ['4.0863863468223324']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 4654c969333e1dcd6ea102e1877a628a8196d16f5ca57a53bde4a2926d196339
 - id: dev-006
   question: What is the overall late delivery rate?
   difficulty: easy
@@ -90,9 +90,9 @@ items:
     - {name: late_delivery_rate, type: number}
     rows:
     - ['0.06773090079817559863']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 57985ab6d9665916959e5da996b65579e4e73c5533e194197d9ee7cf4657daa0
 - id: dev-007
   question: How many orders were placed in each month of 2018?
   difficulty: medium
@@ -120,9 +120,9 @@ items:
     - ['2018-08-01', 6512]
     - ['2018-09-01', 16]
     - ['2018-10-01', 4]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 5c5e055e1ca33fcffceccbd27ee6798d2459f43ca38f7243e921c89f23888f51
 - id: dev-008
   question: Which 5 product categories generated the most revenue?
   difficulty: medium
@@ -144,9 +144,9 @@ items:
     - [bed_bath_table, '1035964.06']
     - [sports_leisure, '979740.92']
     - [computers_accessories, '904322.02']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 963f5022c5ec4384a57d5661184caa3db31d429842323ea046ec369876d0d58a
 - id: dev-009
   question: Which 10 customer states generated the most revenue?
   difficulty: medium
@@ -173,9 +173,9 @@ items:
     - [DF, '300886.45']
     - [GO, '287870.46']
     - [ES, '273532.13']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: bdd6323a8c75b9e2ef7c34464e54b4faa574b1bc049283fed7c5cdf359191323
 - id: dev-010
   question: How many distinct orders used each payment method?
   difficulty: medium
@@ -195,9 +195,9 @@ items:
     - [debit_card, 1528]
     - [not_defined, 3]
     - [voucher, 3866]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 4e08a002b95e86dc582f40401649d62601a8cffc9d8e5216a66af08122ed734e
 - id: dev-011
   question: Which 5 customer states have the longest average delivery time?
   difficulty: medium
@@ -219,9 +219,9 @@ items:
     - [AM, '26.4258620689655172']
     - [AL, '24.5440050377833753']
     - [PA, '23.7729704016913319']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: aae2e1fa35dfa2d3bb60242fd4266efbbd38ef273bd04c3ff47f360b4b0e600e
 - id: dev-012
   question: Which 10 sellers had the highest revenue in 2018?
   difficulty: medium
@@ -250,9 +250,9 @@ items:
     - [4a3ca9315b744ce9f8e9374361493884, '72741.35']
     - [6560211a19b47992c3666cc44a7e94c0, '67411.93']
     - [edb1ef5e36e0c8cd84eb3c9b003e486d, '60855.55']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: f536bb166cea24d72bea8655aef275cf9a080a74d828f4720359b3dae4d4e15b
 - id: dev-013
   question: What is the average review score for each delivery status?
   difficulty: medium
@@ -272,9 +272,9 @@ items:
     - [late, '2.2704905187274722']
     - [missing_delivery_date, '4.5000000000000000']
     - [early, '4.2941143109921396']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: a7e5942ab357bcf45548044d7434a6620306cba3657b6bd6cd71d325fe77418a
 - id: dev-014
   question: How many orders from customers in São Paulo state (SP) were delivered?
   difficulty: easy
@@ -286,9 +286,9 @@ items:
     - {name: delivered_orders, type: integer}
     rows:
     - [40501]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: f966bacd5d53165e51be093931e25095e95178d3d89f45a30496d00b540e6001
 - id: dev-015
   question: What was the average order value in 2017 and in 2018?
   difficulty: medium
@@ -306,9 +306,9 @@ items:
     rows:
     - ['2018', '137.1388991425529133']
     - ['2017', '137.6561638309859155']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 285a1eea85140ed1e41b436df732da4c65bdc83619ce736d735b21c811da6fcb
 - id: dev-016
   question: How many items were sold in the health_beauty category in 2018?
   difficulty: medium
@@ -324,9 +324,9 @@ items:
     - {name: items_sold, type: integer}
     rows:
     - [5924]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 632fa1816ef47954f4d6511dc6d0f5c30b913fcf6796a28c89fba6dd71f9011f
 - id: dev-017
   question: What was the month-over-month revenue growth rate for each month from February to August 2018?
   difficulty: hard
@@ -356,9 +356,9 @@ items:
     - ['2018-06-01', '-0.13053671836266869311']
     - ['2018-07-01', '0.01711957617489951209']
     - ['2018-08-01', '-0.03323769768465091174']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 993f76db522a7a5580aced227124743ac5cbd5d6c785f67fb2fe40f2531481fc
 - id: dev-018
   question: What is the repeat customer rate?
   difficulty: hard
@@ -376,9 +376,9 @@ items:
     - {name: repeat_customer_rate, type: number}
     rows:
     - ['0.03000278497825574670']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 3229f1b33d858c49bff777dc92603162ba9961343330a37b01a71ac1698ee169
 - id: dev-019
   question: What was the cancellation rate in 2017?
   difficulty: medium
@@ -393,9 +393,9 @@ items:
     - {name: cancellation_rate, type: number}
     rows:
     - ['0.00587570120396443538']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 0224860c4138a19e0a703cff475bc5bc13d5655670a5f70bed89504b06ec3af8
 - id: dev-020
   question: Among product categories with at least 500 reviewed orders, which 5 have the lowest average
     review score?
@@ -443,9 +443,9 @@ items:
     - [821fb029fc6e495ca4f08a35d51e53a5, '0.33333333333333333333']
     - [ede0c03645598cdfc63ca8237acbe73d, '0.32558139534883720930']
     - [ad781527c93d00d89a11eecd9dcad7c1, '0.31578947368421052632']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 91e70ff33266db415b588c3cba6f93e0e166701b3e89d9135b7a93ac12c5e051
 - id: dev-022
   question: What is the average weight in grams of products in the furniture_decor category?
   difficulty: easy
@@ -458,9 +458,9 @@ items:
     - {name: average_weight_g, type: number}
     rows:
     - ['3008.2668423033496425']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 0fdd12d9c94e8bd466149e114803d355a8f70e016514d01bde22563ab4b1e05e
 - id: dev-023
   question: How much revenue came from products weighing more than 10 kg?
   difficulty: medium
@@ -475,9 +475,9 @@ items:
     - {name: revenue, type: number}
     rows:
     - ['1750999.84']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 858a826cd0b4c5c325a82753437aa417228ed2b40eb00ce544b166006e077fcc
 - id: dev-024
   question: How many sellers have sold at least one item?
   difficulty: easy
@@ -509,9 +509,9 @@ items:
     - {name: orders, type: integer}
     rows:
     - ['16', 6675]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 7d5c00166fef17d47b34d839549ae9ac924042ff9179c413c3c66d534a5cea2f
 - id: dev-026
   question: What is the average number of installments for credit card payments?
   difficulty: easy
@@ -523,9 +523,9 @@ items:
     - {name: average_installments, type: number}
     rows:
     - ['3.5071554137639169']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 03ad497717044e2d627b3eeff87ff036aadc834bf6e40ca5ffacac801d29d547
 - id: dev-027
   question: What percentage of 2017 revenue came from customers in SP?
   difficulty: hard
@@ -540,9 +540,9 @@ items:
     - {name: sp_revenue_share, type: number}
     rows:
     - ['0.35859134352313750247']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: d6e39cc2e24318a9153b389e22df2a2b13fd2cb9289e521d5ece46bcfc53278f
 - id: dev-028
   question: How many orders are there in each order status?
   difficulty: easy
@@ -562,9 +562,9 @@ items:
     - [processing, 301]
     - [delivered, 96478]
     - [canceled, 625]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: 33e1c1c58cc452eb4ad21673709ee35ce9e66a593e592d2e40767ad0267ce795
 - id: dev-029
   question: How many new customers made their first purchase in each month of 2017?
   difficulty: hard
@@ -599,9 +599,9 @@ items:
     - ['2017-10-01T00:00:00', 4470]
     - ['2017-11-01T00:00:00', 7304]
     - ['2017-12-01T00:00:00', 5487]
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: bed8f7dd6be4f73a7e84bd859d98e317322a5b59ccb2c5c8be366898adcde9a5
 - id: dev-030
   question: What is the median delivery time in days for delivered orders?
   difficulty: medium
@@ -614,6 +614,6 @@ items:
     - {name: median_delivery_days, type: number}
     rows:
     - ['10.22']
-  verified_by: null
-  verified_on: null
-  verified_hash: null
+  verified_by: Shubham More
+  verified_on: '2026-10-09'
+  verified_hash: ae855efa5dba989bbdf074920136a31cc335da99eb47c91af38420ba5d6b91d3

@@ -99,6 +99,8 @@ class BedrockModelClient:
             model=response.model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
+            cache_read_tokens=getattr(response.usage, "cache_read_input_tokens", None) or 0,
+            cache_write_tokens=getattr(response.usage, "cache_creation_input_tokens", None) or 0,
         )
 
 

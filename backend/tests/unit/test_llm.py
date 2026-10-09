@@ -39,6 +39,18 @@ def test_parse_valid_reply() -> None:
     assert g.assumptions == ("a",) and g.metrics_used == ("revenue",)
 
 
+def test_parse_accepts_an_array_sent_as_json_text() -> None:
+    reply = {**json.loads(reply_json("SELECT 1")), "assumptions": '["Best = highest average."]'}
+    g = parse_generation(json.dumps(reply))
+    assert g.assumptions == ("Best = highest average.",)
+
+
+def test_parse_error_shows_the_bad_value() -> None:
+    reply = {**json.loads(reply_json("SELECT 1")), "metrics_used": "revenue"}
+    with pytest.raises(OutputParseError, match='got "revenue"'):
+        parse_generation(json.dumps(reply))
+
+
 def test_parse_unanswerable_reply_drops_sql() -> None:
     g = parse_generation(reply_json("SELECT 1", can_answer=False, interpretation="No names."))
     assert not g.can_answer and g.sql == ""
@@ -55,6 +67,8 @@ def test_parse_unanswerable_reply_drops_sql() -> None:
         reply_json(""),  # can_answer true but no SQL
         json.dumps({**json.loads(reply_json("SELECT 1")), "can_answer": "yes"}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "one"}),
+        json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "[not json"}),
+        json.dumps({**json.loads(reply_json("SELECT 1")), "assumptions": "[1, 2]"}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "sql": ["SELECT 1"]}),
         json.dumps({**json.loads(reply_json("SELECT 1")), "interpretation": " "}),
     ],
@@ -101,7 +115,12 @@ def _response(stop_reason: str = "tool_use", answer: dict[str, Any] | None = Non
         stop_reason=stop_reason,
         content=content,
         model="us.anthropic.claude-sonnet-5",
-        usage=SimpleNamespace(input_tokens=6000, output_tokens=300),
+        usage=SimpleNamespace(
+            input_tokens=400,
+            output_tokens=300,
+            cache_read_input_tokens=5600,
+            cache_creation_input_tokens=None,
+        ),
     )
 
 
@@ -147,7 +166,8 @@ def test_reply_is_the_tool_input_and_reports_usage() -> None:
     reply = _client(messages).complete(REQUEST)
     assert json.loads(reply.text) == ANSWER
     assert parse_generation(reply.text).sql == "SELECT 1"
-    assert (reply.input_tokens, reply.output_tokens) == (6000, 300)
+    assert (reply.input_tokens, reply.output_tokens) == (400, 300)
+    assert (reply.cache_read_tokens, reply.cache_write_tokens) == (5600, 0)
     assert len(messages.calls) == 1
 
 

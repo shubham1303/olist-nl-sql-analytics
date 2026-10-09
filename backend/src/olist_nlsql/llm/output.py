@@ -5,6 +5,7 @@ Bedrock doesn't support structured outputs for Sonnet 5 yet, so nothing actually
 enforces the schema on their side. This parser is the real check.
 """
 
+import contextlib
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -56,8 +57,14 @@ class Generation:
 
 
 def _strings(value: object, field: str) -> tuple[str, ...]:
+    # Without schema enforcement the model sometimes sends an array field as its JSON
+    # text ('["a", "b"]'). That is unambiguous, so decode it; anything else is an error.
+    if isinstance(value, str) and value.strip().startswith("["):
+        with contextlib.suppress(json.JSONDecodeError):
+            value = json.loads(value)
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-        raise OutputParseError(f"{field} must be a list of strings")
+        got = json.dumps(value)[:80]
+        raise OutputParseError(f"{field} must be a list of strings, got {got}")
     return tuple(v.strip() for v in value if v.strip())
 
 

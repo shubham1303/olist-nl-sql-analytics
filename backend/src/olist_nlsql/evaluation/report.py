@@ -110,8 +110,10 @@ def render(record: RunRecord, triage: Mapping[str, tuple[str, str]] | None = Non
         f"- Repair rate: {_pct(summary['repair_rate'])}; repairs that ended correct: "
         f"{_pct(summary['repair_success'])}",
         f"- Latency p50 / p95: {summary['latency_ms']['p50']} / {summary['latency_ms']['p95']} ms",
-        f"- Tokens per question: {summary['tokens_per_question']}; model calls per question: "
-        f"{summary['model_calls_per_question']}",
+        f"- Tokens per question (input incl. cached + output): {summary['tokens_per_question']}; "
+        f"output only: {summary['output_tokens_per_question']}; input served from cache: "
+        f"{_pct(summary['cache_read_share'])}",
+        f"- Model calls per question: {summary['model_calls_per_question']}",
         "",
         "| Difficulty | Correct |",
         "|---|---:|",

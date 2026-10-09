@@ -74,7 +74,8 @@ class ItemOutcome:
     repair_attempted: bool
     answer_source: str | None
     model_calls: int
-    input_tokens: int
+    input_tokens: int  # all input, cached or not
+    cache_read_tokens: int
     output_tokens: int
     total_ms: float
     model_ms: float
@@ -212,7 +213,10 @@ def evaluate_item(
         repair_attempted=result.repair_attempted,
         answer_source=result.answer_source,
         model_calls=len(result.attempts),
-        input_tokens=sum(a.input_tokens for a in result.attempts),
+        input_tokens=sum(
+            a.input_tokens + a.cache_read_tokens + a.cache_write_tokens for a in result.attempts
+        ),
+        cache_read_tokens=sum(a.cache_read_tokens for a in result.attempts),
         output_tokens=sum(a.output_tokens for a in result.attempts),
         total_ms=result.timings.total_ms,
         model_ms=round(sum(a.model_ms for a in result.attempts), 2),
@@ -330,6 +334,7 @@ def summarise(
     repaired = [i for i in scored if i.repair_attempted]
     latency = [i.total_ms for i in scored]
     tokens = [i.input_tokens + i.output_tokens for i in scored]
+    input_total = sum(i.input_tokens for i in scored)
     return {
         "items": len(items),
         "scored": n,
@@ -340,6 +345,10 @@ def summarise(
         "repair_success": _rate(sum(bool(i.correct) for i in repaired), len(repaired)),
         "latency_ms": {"p50": percentile(latency, 50), "p95": percentile(latency, 95)},
         "tokens_per_question": round(sum(tokens) / n, 1) if n else None,
+        "output_tokens_per_question": round(sum(i.output_tokens for i in scored) / n, 1)
+        if n
+        else None,
+        "cache_read_share": _rate(sum(i.cache_read_tokens for i in scored), input_total),
         "model_calls_per_question": round(sum(i.model_calls for i in scored) / n, 2) if n else None,
         "categories": dict(
             sorted(Counter(categories.get(i.id, i.category) for i in scored).items())

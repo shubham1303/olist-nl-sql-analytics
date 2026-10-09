@@ -31,8 +31,10 @@ class ModelRequest:
 class ModelReply:
     text: str  # the JSON document produced under the output schema
     model: str
-    input_tokens: int
+    input_tokens: int  # uncached input only
     output_tokens: int
+    cache_read_tokens: int = 0  # input served from the prompt cache
+    cache_write_tokens: int = 0  # input written to the prompt cache
 
 
 class ModelError(Exception):

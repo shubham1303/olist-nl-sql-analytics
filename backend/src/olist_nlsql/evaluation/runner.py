@@ -390,5 +390,5 @@ def save(record: RunRecord, directory: Path = RESULTS_DIR) -> Path:
     path = directory / f"{record.run_id}.json"
     if path.exists():
         raise FileExistsError(f"{path} already exists")
-    path.write_text(to_json(record), encoding="utf-8")
+    path.write_text(to_json(record), encoding="utf-8", newline="\n")
     return path

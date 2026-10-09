@@ -16,7 +16,7 @@ from datetime import date
 from pathlib import Path
 
 from olist_nlsql.config import ConfigError, load_settings
-from olist_nlsql.db import QueryExecutor
+from olist_nlsql.db import QueryExecutionError, QueryExecutor
 from olist_nlsql.dbsetup.env import MissingSettingError, load_dotenv, reader_conninfo
 from olist_nlsql.evaluation import benchmark as bm
 from olist_nlsql.evaluation import report, runner
@@ -152,12 +152,18 @@ def main(argv: list[str] | None = None) -> int:
             record = runner.from_json(args.record.read_text(encoding="utf-8"))
             triage = report.load_triage(args.triage or report.triage_path(record), record)
             md = args.record.with_suffix(".md")
-            md.write_text(report.render(record, triage), encoding="utf-8")
+            md.write_text(report.render(record, triage), encoding="utf-8", newline="\n")
             print(f"wrote {md}")
             return 0
 
         return _split_command(args, bm.load(args.split, args.benchmark_dir))
-    except (bm.BenchmarkError, report.TriageError, ConfigError, MissingSettingError) as exc:
+    except (
+        bm.BenchmarkError,
+        report.TriageError,
+        ConfigError,
+        MissingSettingError,
+        QueryExecutionError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except ValueError as exc:
@@ -178,7 +184,7 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
             new = snapshot_item(old, validator, executor)
             if old.verified and not new.verified:
                 print(f"{item_id}: result CHANGED, verification cleared")
-            elif new.reference_result != old.reference_result:
+            elif new.content_hash() != old.content_hash():  # compares the stored text form
                 print(f"{item_id}: snapshot updated")
             benchmark = benchmark.replace_item(new)
         print(f"wrote {bm.save(benchmark)}")
@@ -218,7 +224,7 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
     )
     path = runner.save(record, args.results_dir)
     md = path.with_suffix(".md")
-    md.write_text(report.render(record), encoding="utf-8")
+    md.write_text(report.render(record), encoding="utf-8", newline="\n")
     c = record.summary["counts"]
     print(f"\nscored {record.summary['scored']}: correct {c['correct']}")
     print(f"wrote {path}\nwrote {md}")

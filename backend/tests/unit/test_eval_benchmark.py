@@ -126,3 +126,19 @@ def test_committed_files_are_in_canonical_form() -> None:
     for split, benchmark in bm.load_all().items():
         assert benchmark.path is not None
         assert benchmark.path.read_text(encoding="utf-8") == bm.dump(benchmark), split
+
+
+def test_snapshot_from_the_database_hashes_like_its_stored_form() -> None:
+    """A fresh result (date objects, floats) must not look changed against the same values
+    read back from YAML (text dates, decimals); otherwise snapshot would report false
+    changes and clear verifications."""
+    fresh = Table(
+        (ColumnInfo("month", "date"), ColumnInfo("median_days", "number")),
+        ((date(2018, 1, 1), 10.22),),
+    )
+    stored = bm.parse(bm.dump(bm.Benchmark("dev", (item(reference_result=fresh),))), "dev")
+    reread = stored.items[0]
+    assert reread.reference_result != fresh  # different Python types...
+    assert reread.content_hash() == item(reference_result=fresh).content_hash()  # same content
+    verified = reread.verify("Reviewer", date(2026, 10, 9))
+    assert verified.with_result(fresh).verified

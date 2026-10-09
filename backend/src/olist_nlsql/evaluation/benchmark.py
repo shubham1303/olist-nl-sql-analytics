@@ -406,5 +406,5 @@ def dump(benchmark: Benchmark) -> str:
 def save(benchmark: Benchmark, path: Path | None = None) -> Path:
     target = path or benchmark.path or benchmark_path(benchmark.split)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(dump(benchmark), encoding="utf-8")
+    target.write_text(dump(benchmark), encoding="utf-8", newline="\n")
     return target

@@ -128,7 +128,7 @@ A phase is done only when its milestone is met and CI is green.
 | 1 ✅ | **Data foundation (local)** | `docker-compose.yml`; pinned-checksum download; `raw` schema + load; 8 curated `analytics` views; `analytics_reader` role; initial `catalog.yaml` + drift test; `QueryExecutor` + `PostgresExecutor`; data-model / metrics / local-database docs; integration job in CI | **Met:** 168 integration tests pass from a clean volume; role tests prove no writes/DDL/raw access even with read-only disabled; revenue identical across all views and equal to an independent CSV recomputation; audit control totals reconcile exactly |
 | 2 ✅ | **SQL safety + semantic validation** | Catalog relationships, visibility, function/cast allowlists; sqlglot validator with stable error codes; join-path + fan-out + attribution analysis; adversarial corpus; `sql-safety.md`; ADRs 0014–0015 | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
 | 3 ✅* | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met with a fake model** (unit + DB integration, all paths). *Live-model half pending: Bedrock model access not yet granted; rerun `pytest -m live -s`.* |
-| 4 | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | Baseline report committed with stage metrics for dev; one held-out checkpoint run recorded |
+| 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
 | 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
 | 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
 | 7 | **AWS deployment** | Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
@@ -192,23 +192,22 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 4 (in progress, updated 2026-10-09)
+### Phase 4 (done, 2026-10-09)
 
-**Where it stands:** dev half done, held-out half not started.
+**Where it stands:** milestone met; dev baseline and one held-out checkpoint committed.
 
 - Harness in `olist_nlsql.evaluation`: strict benchmark loader, comparator, runner, failure categoriser, markdown report with triage overrides; CLI `python -m olist_nlsql.evaluation check|snapshot|show|verify|run|report` ([eval/README.md](eval/README.md)).
 - ADR 0017: comparison rules (names/column order ignored, extra columns allowed, percent form for rates, month normalisation, per-item tolerances) and verification pinned to a content hash.
 - 50 items (30 dev / 20 test) across all ADR 0006 areas and difficulties. Snapshots taken on the pinned Kaggle build. Review changed dev-010 (wording), dev-020 (exclude `uncategorized`) and dev-024 ("sold" = revenue orders, 3,053).
-- **All 30 dev items human-verified** (Shubham More). **Test items: 0/20 verified.**
+- **All 50 items human-verified** (Shubham More). Test review changed test-008 (label column dropped so boolean or text group labels both match), test-009 ("bought something" → "placed an order", any status as in dev-029) and test-017 ("how much" → "by what percentage"). Ties and near-boundary rows checked for every ranking; `uncategorized` is in no top-k.
 - **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. ADR 0003 still names Sonnet 5; if 4.6 becomes the official model, record that in a new ADR.
 - Live fixes from the first runs: the parser keeps `assumptions`/`metrics_used` sent as (possibly malformed) text instead of failing the question; prompt-cache tokens are now recorded.
 - **First dev baseline:** [20261009T082119Z](eval/results/20261009T082119Z_dev_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **29/30 correct**. Miss: dev-012, triaged `wrong_filter_or_time_window` (no revenue-order filter, so NULL-revenue sellers sort first in `ORDER BY DESC`).
+- **Held-out checkpoint:** [20261009T083443Z](eval/results/20261009T083443Z_test_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **19/20 correct**. Miss: test-016, triaged `wrong_filter_or_time_window` (averaged `item_count` over all orders, including the 775 with no items). Not acted on (held-out). The record shows "uncommitted changes" because verification of test.yaml was committed together with the run; the benchmark hash pins the content.
 - Caveat for reporting: questions were drafted with Claude's help and are answered by a Claude model; references are human-verified, but a few human-written test questions would strengthen the held-out result.
 
-**Next steps, in order:**
-1. Verify the 20 test items (`show --split test …`, then `verify`), same checks as dev.
-2. One held-out checkpoint: `run --split test --checkpoint "end of phase 4 baseline"`; commit the record. Phase 4 is then done.
-3. Phase 5 (dev only): catalog/prompt line saying rankings by revenue must filter `is_revenue_order` or use `NULLS LAST` (from dev-012); re-run dev and compare.
+**Next steps:**
+1. Phase 5 (dev only): catalog/prompt line saying rankings by revenue must filter `is_revenue_order` or use `NULLS LAST` (from dev-012); re-run dev and compare.
 
 ### Phase 3 (done, 2026-09-24)
 

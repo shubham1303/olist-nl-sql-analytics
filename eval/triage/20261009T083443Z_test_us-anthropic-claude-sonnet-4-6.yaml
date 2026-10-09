@@ -1,0 +1,3 @@
+test-016:
+  category: wrong_filter_or_time_window
+  note: Averaged item_count over all 99,441 orders (1.13), including the 775 orders with no items and canceled/unavailable ones; reference uses revenue orders (1.1416). Held-out item, so not acted on.

@@ -46,11 +46,22 @@ from `.env` or code.
    **bedrock-runtime** endpoint (ADR 0016). The least-privilege policy is written in
    Phase 7.
 
-3. **Model access** must be enabled once per account:
-   1. In the Amazon Bedrock console (`us-east-1`), open the model catalog.
-   2. Request access to **Anthropic Claude Sonnet 5**. That includes Anthropic's
-      use-case form and the model's offer or agreement.
-   3. Check with:
+3. **Model access.** Bedrock enables serverless models automatically, but Anthropic
+   models need a **one-time use-case form** per account:
+   1. Check whether it's on file: `aws bedrock get-use-case-for-model-access --region us-east-1`.
+      `ResourceNotFoundException` means it was never submitted.
+   2. Submit it, either by opening Claude in the Bedrock playground (`us-east-1`) when the
+      console offers the form, or from the CLI with a JSON file holding `companyName`,
+      `companyWebsite`, `intendedUsers`, `industryOption`, `otherIndustryOption` and
+      `useCases`:
+
+      ```sh
+      aws bedrock put-use-case-for-model-access --form-data fileb://bedrock-form.json --region us-east-1
+      ```
+
+   3. Make the first call as an identity with AWS Marketplace permissions (an admin user):
+      it accepts the model's Marketplace offer for the account.
+   4. Check with:
 
    ```sh
    # The control-plane check uses the foundation-model ID (no us./global. prefix):
@@ -60,6 +71,10 @@ from `.env` or code.
 
    `agreementAvailability.status` must not be `NOT_AVAILABLE`. Until access is granted,
    the CLI reports `generation_failed / access_denied` and `pytest -m live` skips.
+
+   An `AccessDeniedException` saying the model "is not available for this account …
+   contact AWS Sales" is an account-level entitlement block. IAM and console settings
+   can't clear it; open an AWS Support case (Account and billing).
 
 Model settings are environment variables (defaults in
 [config.py](../backend/src/olist_nlsql/config.py)):
@@ -95,5 +110,7 @@ modes.
 | `uv run pytest` | nothing | Unit tests: validator corpus, prompt, parser, pipeline with a fake model |
 | `uv run pytest -m integration` | Docker database | Data model, permissions, validator vs database, pipeline end to end with a fake model |
 | `uv run pytest -m live -s` | AWS credentials and model access | 5-question Bedrock smoke test; prints outcomes; skips if unavailable |
+
+The benchmark has its own commands; see [eval/README.md](../eval/README.md).
 
 The live tests never run in CI.

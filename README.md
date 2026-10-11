@@ -28,16 +28,27 @@ than twice per question.
 
 ## Where it's at
 
-Phases 1-3 are done: local Postgres with the curated views, the validator, and the
-pipeline + CLI. I'm still waiting on Bedrock model access, so right now the pipeline
-runs end to end only with the fake model (`--fake-sql`). The live smoke test skips
-itself until access comes through.
+Phases 0-5 of the [plan](plan.md) are done. The pipeline runs end to end against
+Claude Sonnet 4.6 on Bedrock, and the [eval harness](eval/README.md) has 57 questions
+(34 dev, 23 held out), each with a reference answer I checked by hand.
 
-Phase 4 is in progress: the eval harness and 50 drafted questions (30 dev / 20 held
-out) are in [eval/](eval/README.md). No accuracy numbers yet, because every reference
-answer needs a human check first. After that comes a small React UI, then deploying to AWS (Lambda + Aurora
-Serverless). The full roadmap is in [plan.md](plan.md), and the reasoning behind
-most decisions is written up as ADRs in [docs/adr](docs/adr/README.md).
+Results on Sonnet 4.6:
+
+- **Dev: 34/34**, the same in three repeat runs, with no repairs needed.
+- **Held out: 20/23.** The 20 drafted questions scored 19/20, but the 3 I wrote
+  myself scored only 1/3. So the drafted questions on their own made it look more
+  accurate than it is. I only run the held-out set at the end of a phase and never
+  tune anything on it.
+
+The benchmark is small (one held-out question is worth about 4 points), so I quote
+item counts rather than percentages. What changed between runs and why is in
+[eval/CHANGELOG.md](eval/CHANGELOG.md).
+
+Next is Phase 6: a local API and a React UI with automatic charts. I've already
+measured how long a paused Aurora Serverless cluster takes to come back (16-20 s),
+since that decides how the UI handles a cold database. After that comes deploying to
+AWS (Lambda + Aurora Serverless). The reasoning behind most decisions is written up
+as ADRs in [docs/adr](docs/adr/README.md).
 
 ## Running it locally
 

@@ -126,3 +126,20 @@ conditions when at least one key pair exists ([sql-safety.md](../docs/sql-safety
 
 No benchmark run is attached: dev was already 34/34, and the change only removes a
 repair round trip on this query shape.
+
+## Multi-run baseline and per-attempt records (2026-10-11)
+
+New tooling ([eval/README.md](README.md#beforeafter-claims)):
+- `run --repeat N`.
+- `compare`, which reports mean and min over repeated runs with a verdict.
+- Run records (version 2) keep every attempt's SQL and validator codes.
+
+**3-run dev baseline** for later comparisons. Prompt v2, validator fix included, clean
+commit `b007d43`:
+- [r1of3](results/20261011T212143Z_dev_us-anthropic-claude-sonnet-4-6_r1of3.md),
+  [r2of3](results/20261011T212304Z_dev_us-anthropic-claude-sonnet-4-6_r2of3.md),
+  [r3of3](results/20261011T212425Z_dev_us-anthropic-claude-sonnet-4-6_r3of3.md).
+- **34, 34, 34** (mean 34.00, min 34), no repairs, and no attempt failed validation.
+- dev-034 passed on its first attempt in all three runs. Before the validator fix, 3 of
+  6 re-asks had a rejected first attempt. That fits the fix, but three runs are too few
+  to credit it.

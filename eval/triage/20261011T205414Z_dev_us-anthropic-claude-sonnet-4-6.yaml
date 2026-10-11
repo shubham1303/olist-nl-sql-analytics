@@ -1,0 +1,3 @@
+dev-034:
+  category: correct
+  note: "Correct after one repair. The model's assumption says it rewrote the join to avoid INVALID_JOIN_PATH. Re-asking dev-034 six times reproduced the cause, a false rejection (key equality on customer_unique_id plus range conditions in a LEFT JOIN ... ON). Two other first attempts failed with PARSE_ERROR for a CTE named returning, which PostgreSQL also rejects (correct rejection). Validator fixed 2026-10-11."

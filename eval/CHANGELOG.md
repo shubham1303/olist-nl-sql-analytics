@@ -91,3 +91,38 @@ prompt v2, clean commit `f5f4423`: **20/23 correct**.
 Per ADR 0006 none of these motivate a change. The human-written items were harder than
 the drafted ones, and that is the main finding: a held-out score from drafted
 questions alone overstated accuracy.
+
+## Validator: conditions beside a join key (2026-10-11)
+
+**Driven by:** dev-034, which needed a repair in
+[20261011T205414Z](results/20261011T205414Z_dev_us-anthropic-claude-sonnet-4-6.md). Run
+records keep only the final SQL, so dev-034 was asked six more times through the
+pipeline to capture first attempts. Three were rejected:
+
+- **1× `INVALID_JOIN_PATH` (false rejection):**
+  `LEFT JOIN orders o ON o.customer_unique_id = fp.customer_unique_id AND o.purchased_at > fp.first_purchased_at AND ...`,
+  where `fp` is grouped by customer.
+  - The key pair is valid and `fp` is unique on it. The validator rejected every
+    condition across both sides that was not a column = column equality.
+  - The per-customer CTE was not the problem: the same join with only the key in `ON`
+    was already accepted.
+  - Moving the range to `WHERE`, as the error suggested, drops cohort members with no
+    return, so it changes the answer.
+- **2× `PARSE_ERROR`:** a CTE named `returning`, a reserved word that PostgreSQL also
+  rejects. That is a correct rejection.
+
+**Change:** conditions in `ON` that are not key equalities are kept as narrowing
+conditions when at least one key pair exists ([sql-safety.md](../docs/sql-safety.md)).
+
+- New corpus cases: the dev-034 shape is accepted and also executes in the integration
+  suite.
+- New cases that stay rejected:
+  - a range-only join,
+  - items × payments with an extra condition (many-to-many),
+  - `SUM(o.revenue)` over orders ⋈ items with an extra condition (`FANOUT_RISK`),
+  - a non-key equality beside a key.
+- The existing OR-bypass, `<>` and `LOWER(key)` attack cases stay rejected. All 783
+  tests pass.
+
+No benchmark run is attached: dev was already 34/34, and the change only removes a
+repair round trip on this query shape.

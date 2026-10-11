@@ -76,4 +76,4 @@
 | dev-031 | medium | answered | yes |  | correct |  | 2706 |
 | dev-032 | medium | answered | yes |  | correct |  | 3158 |
 | dev-033 | hard | answered | yes |  | correct |  | 4431 |
-| dev-034 | hard | answered | yes | yes | correct |  | 9894 |
+| dev-034 | hard | answered | yes | yes | correct (triaged) | Correct after one repair. The model's assumption says it rewrote the join to avoid INVALID_JOIN_PATH. Re-asking dev-034  | 9894 |

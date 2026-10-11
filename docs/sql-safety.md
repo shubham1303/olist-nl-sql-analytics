@@ -114,6 +114,16 @@ flowchart LR
   `product_id`, `seller_id` and `product_category`.
 - A join is accepted when every key pair is in one domain (or is the identical catalog
   column), and at least one side is unique on its join columns.
+- Other conditions in `ON` may sit beside the key pairs, such as one-side filters
+  (`AND i.price > 100`) or comparisons across both sides
+  (`AND o.purchased_at > f.first_at`). ANDed with the keys they can only remove rows,
+  so the cardinality analysis is unchanged. They never make a join valid on their own:
+  a join with no key pair is rejected as a cartesian product, and `OR` conditions
+  don't split into key pairs. A column = column equality is always treated as a key
+  pair and must follow a relationship.
+  - *Changed 2026-10-11 (dev-034):* conditions across both sides used to be rejected
+    as `INVALID_JOIN_PATH`. That rejected a correct cohort query whose `LEFT JOIN`
+    needs the range in `ON`; moving it to `WHERE` changes the result.
 - Joining two many-sides, such as `order_items` with `order_payments`, is many-to-many
   and rejected.
 
@@ -324,7 +334,7 @@ alone, because changing them would change aggregate results.
 
 | Suite | What it proves |
 |---|---|
-| [sql_cases.py](../backend/tests/sql_cases.py) | 49 accepted and 132 rejected queries, each rejection with its expected code |
+| [sql_cases.py](../backend/tests/sql_cases.py) | 50 accepted and 136 rejected queries, each rejection with its expected code |
 | [test_sql_validator.py](../backend/tests/unit/test_sql_validator.py) | The corpus; every error code covered; every catalog metric validates; every allowlisted function recognised by name; limits, output, messages, locations; fail-closed on internal errors |
 | [test_validator_execution.py](../backend/tests/integration/test_validator_execution.py) | Every accepted query executes as `analytics_reader`; fan-out rejections return inflated numbers when run anyway; 18 attacks are also blocked by the database alone |
 | [test_permissions.py](../backend/tests/integration/test_permissions.py) | The role holds even with read-only disabled and the validator bypassed |

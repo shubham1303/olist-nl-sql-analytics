@@ -54,3 +54,18 @@ non-rate value. This is a comparison-rule change found on dev; it is applied to 
 test items for consistency, not because of any test result (test-008 passed the
 checkpoint by 0.00001). All five items were re-verified. Rankings stay distinct at 2
 decimals (closest pair: dev-020, 4.0031 vs 4.0092). Rates keep 0.0005.
+
+## Human-written items: 34-item dev baseline (2026-10-11)
+
+Seven hand-written questions were added ([ADR 0018](../docs/adr/0018-human-written-benchmark-items.md)):
+dev-031 to dev-034 and test-021 to test-023, all verified. No prompt or catalog change.
+
+**New dev baseline** ([20261011T205414Z](results/20261011T205414Z_dev_us-anthropic-claude-sonnet-4-6.md),
+prompt v2, clean commit `aea30e3`): **34/34 correct**. Repair rate 2.9% (dev-034: the
+first query joined a CTE to `orders` on a path the validator rejects, and the repair
+passed). All four new items were answered with the reference's logic, including the
+choices the notes flag as ambiguous (any status, revenue customers only, any later
+order within 90 days). None needed its tolerance to pass beyond 2-decimal rounding.
+
+Dev is still saturated, so the human-written items did not expose a failure mode.
+Later dev comparisons use 34 items.

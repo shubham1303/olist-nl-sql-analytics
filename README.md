@@ -10,7 +10,7 @@ validator and the plumbing around it.
 
 ## How it works
 
-1. The question goes to Claude Sonnet 5 on Bedrock, together with a system prompt
+1. The question goes to Claude Sonnet 4.6 on Bedrock, together with a system prompt
    generated from a catalog of the curated views (tables, columns, metric definitions).
 2. The model has to reply by calling a `submit_answer` tool with the SQL, its
    interpretation of the question, and assumptions. The reply gets parsed strictly

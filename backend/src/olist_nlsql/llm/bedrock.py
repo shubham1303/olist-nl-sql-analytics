@@ -5,10 +5,10 @@ InvokeModel API (``POST https://bedrock-runtime.{region}.amazonaws.com/model/{id
 signed with the normal AWS credential chain (AWS_PROFILE, SSO, env vars, or the
 Lambda role). AWS creds deliberately don't come from .env.
 
-Structured output: JSON-schema structured outputs (``output_config.format``) are not
-supported for Claude Sonnet 5 on Bedrock, so the reply is a single call to the
-``submit_answer`` tool whose ``input_schema`` is the output schema. The strict parser
-in ``output.py`` re-checks it.
+Structured output: the reply is a single forced call to the ``submit_answer`` tool
+whose ``input_schema`` is the output schema. It works on Sonnet 4.6 and on Sonnet 5,
+which has no JSON-schema structured outputs (``output_config.format``) on Bedrock
+(ADR 0019). The strict parser in ``output.py`` re-checks it.
 """
 
 import json
@@ -56,8 +56,8 @@ class BedrockModelClient:
                     "input_schema": request.output_schema,
                 }
             ],
-            # On Bedrock, Claude Sonnet 5 accepts a forced tool call only with thinking
-            # disabled; with adaptive thinking the prompt asks for the call instead.
+            # Claude accepts a forced tool call only with thinking disabled; with
+            # adaptive thinking the prompt asks for the call instead.
             "tool_choice": {"type": "tool", "name": ANSWER_TOOL} if forced else {"type": "auto"},
             # The catalog prompt is identical on every call: cache it (explicit breakpoint).
             "system": [

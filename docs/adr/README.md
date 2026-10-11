@@ -7,10 +7,10 @@ accepted; to change a decision, add a new ADR that supersedes it.
 |---|---|---|
 | [0001](0001-database-platform.md) | Database platform: Aurora Serverless v2 + RDS Data API, Docker Postgres locally | Accepted |
 | [0002](0002-database-is-the-security-boundary.md) | The database is the primary security boundary; sqlglot validation is layer two | Accepted |
-| [0003](0003-llm-provider-and-model.md) | Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven | Accepted (endpoint/client detailed in 0016) |
+| [0003](0003-llm-provider-and-model.md) | Bedrock in us-east-1, Claude Sonnet 5 via US inference profile, config-driven | Accepted (endpoint/client detailed in 0016; current model Sonnet 4.6 per 0019) |
 | [0004](0004-public-access-and-cost-controls.md) | Shared access code, throttling, request limits, $20 budget | Accepted |
 | [0005](0005-curated-analytics-schema-and-catalog.md) | Curated analytics views + one catalog as source of truth | Accepted |
-| [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted (comparison detailed in 0017) |
+| [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted (comparison detailed in 0017; sizes amended by 0018) |
 | [0007](0007-deterministic-chart-selection.md) | Deterministic chart selection from result shape | Accepted |
 | [0008](0008-excluded-services.md) | Services deliberately excluded until a measured need exists | Accepted |
 | [0009](0009-tooling-and-repo-conventions.md) | Tooling and repository conventions | Accepted |
@@ -20,7 +20,9 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0013](0013-recommended-time-window.md) | 2017-01 to 2018-08 is a recommended window, not an automatic filter | Accepted |
 | [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted |
 | [0015](0015-model-visible-relations.md) | The model sees fact views and product attributes; lifetime summaries are hidden | Accepted |
-| [0016](0016-bedrock-client-and-structured-output.md) | Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies | Accepted |
+| [0016](0016-bedrock-client-and-structured-output.md) | Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies | Accepted (model ID and tool-call rationale amended by 0019) |
 | [0017](0017-benchmark-comparison-and-verification.md) | Benchmark result comparison and verification pinning | Accepted |
+| [0018](0018-human-written-benchmark-items.md) | Human-written benchmark items (34 dev / 23 held-out) | Accepted |
+| [0019](0019-sonnet-4-6-current-model.md) | Claude Sonnet 4.6 is the current model; Sonnet 5 is a later config swap | Accepted |
 
 Template: [template.md](template.md)

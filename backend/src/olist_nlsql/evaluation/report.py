@@ -146,6 +146,21 @@ def render(record: RunRecord, triage: Mapping[str, tuple[str, str]] | None = Non
     rule = "|---|---|---|---|---|---|---|---:|"
     lines += ["", "## Items", "", header, rule]
     lines += [_item_row(i, triage) for i in record.items if i.verified]
+    failed_attempts = [(i, a) for i in record.items for a in i.attempts if a.outcome != "accepted"]
+    if failed_attempts:
+        lines += [
+            "",
+            "## Attempts that did not pass",
+            "",
+            "| Item | Attempt | Outcome | Validation codes |",
+            "|---|---|---|---|",
+            *[
+                f"| {i.id} | {a.kind} | {a.outcome} | {', '.join(a.validation_codes)} |"
+                for i, a in failed_attempts
+            ],
+            "",
+            "Each attempt's SQL is in the JSON record.",
+        ]
     unverified = [i for i in record.items if not i.verified]
     if unverified:
         lines += [

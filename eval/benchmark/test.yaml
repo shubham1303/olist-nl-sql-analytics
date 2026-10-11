@@ -169,7 +169,6 @@ items:
     FROM orders
     WHERE is_late IS NOT NULL
     GROUP BY is_late
-  compare: {abs_tol: '0.0005'}
   notes: Label column omitted so any group label (boolean or text) matches as an extra column. Late =
     2.2705, on time or early = 4.2904.
   reference_result:
@@ -179,8 +178,8 @@ items:
     - ['4.2903860559238845']
     - ['2.2704905187274722']
   verified_by: Shubham More
-  verified_on: '2026-10-09'
-  verified_hash: d2c4c8bf716b296686db2345fe478f760cae4ba9cdf6ee03fa4116f344bae7b8
+  verified_on: '2026-10-11'
+  verified_hash: e9ed5e6ef99a0191cc271b87ef60ed3d81b9b2c5ca290c627e1d40e17d47c762
 - id: test-009
   question: How many distinct customers placed an order in 2018?
   difficulty: easy
@@ -225,7 +224,7 @@ items:
     HAVING COUNT(*) FILTER (WHERE is_delivered) >= 20
     ORDER BY average_review_score
     LIMIT 5
-  compare: {order_matters: true, abs_tol: '0.0005'}
+  compare: {order_matters: true}
   reference_result:
     columns:
     - {name: seller_id, type: text}
@@ -237,8 +236,8 @@ items:
     - [54965bbe3e4f07ae045b90b0b8541f52, '3.0000000000000000']
     - [a49928bcdf77c55c6d6e05e09a9b4ca5, '3.0102040816326531']
   verified_by: Shubham More
-  verified_on: '2026-10-09'
-  verified_hash: f56edde425cea377e29e32076784a5f26057e794a21d5607d49929a6c273a790
+  verified_on: '2026-10-11'
+  verified_hash: 13cb701ac0e92b0390927b7f4f02e4785b02728fb25f00f6df6ec650490c793f
 - id: test-012
   question: Which 5 seller states generated the most revenue?
   difficulty: medium
@@ -418,3 +417,100 @@ items:
   verified_by: Shubham More
   verified_on: '2026-10-09'
   verified_hash: 7a53f88dceed1414ee5568c7a156844b41d2dcbe8a0e4d0807ca0d2d32796f3e
+- id: test-021
+  question: Which month in 2018 had the highest merchandise revenue, and how much higher was it than the
+    previous month, both in reais and percentage terms?
+  difficulty: hard
+  tags: [time_series, multi_step, human_written]
+  reference_sql: |
+    WITH monthly AS (
+      SELECT purchase_month, SUM(revenue) AS revenue
+      FROM orders
+      GROUP BY purchase_month
+    ), with_previous AS (
+      SELECT purchase_month, revenue,
+             LAG(revenue) OVER (ORDER BY purchase_month) AS previous_revenue
+      FROM monthly
+    )
+    SELECT purchase_month,
+           revenue - previous_revenue AS revenue_increase,
+           revenue / previous_revenue - 1 AS growth_rate
+    FROM with_previous
+    WHERE purchase_month >= '2018-01-01' AND purchase_month < '2019-01-01'
+    ORDER BY revenue DESC NULLS LAST
+    LIMIT 1
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  notes: Human-written. 2018-04 leads 2018-05 by only R$721.23; its previous month is 2018-03.
+  reference_result:
+    columns:
+    - {name: purchase_month, type: date}
+    - {name: revenue_increase, type: number}
+    - {name: growth_rate, type: number}
+    rows:
+    - ['2018-04-01', '12541.92', '0.0127841664021035']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: 084aee9173e4c49f22915a7049e8a2b127197866db364857764cf34a7d7b1f67
+- id: test-022
+  question: Which five product categories had the highest average merchandise revenue per order in 2017?
+    Consider only categories appearing in at least 100 distinct orders.
+  difficulty: hard
+  tags: [product_category, aggregation, time_series, human_written]
+  reference_sql: |
+    SELECT product_category, AVG(revenue) AS average_revenue_per_order
+    FROM order_categories
+    WHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'
+    GROUP BY product_category
+    HAVING COUNT(*) >= 100
+    ORDER BY average_revenue_per_order DESC
+    LIMIT 5
+  compare: {order_matters: true, abs_tol: '0.01'}
+  notes: Human-written. The category's own item revenue per revenue order (as in average_order_value).
+    Whole-order revenue gives the same top 5 with values up to R$1.33 higher. No category sits at the
+    100-order threshold where all orders and revenue orders disagree; uncategorized is not in the top
+    5.
+  reference_result:
+    columns:
+    - {name: product_category, type: text}
+    - {name: average_revenue_per_order, type: number}
+    rows:
+    - [computers, '1294.5592682926829268']
+    - [small_appliances, '330.2188118811881188']
+    - [musical_instruments, '324.0581376518218623']
+    - [air_conditioning, '249.1248672566371681']
+    - [fixed_telephony, '242.8543548387096774']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: a6972666a9137af5e11f346c1f3e5df234f0b8f2ed851cb515bf8d96c0b83e8c
+- id: test-023
+  question: Among customers who placed multiple orders, what is the average number of days between their
+    first and second purchases?
+  difficulty: hard
+  tags: [customer, multi_step, human_written]
+  reference_sql: |
+    WITH ranked AS (
+      SELECT customer_unique_id, purchased_at,
+             ROW_NUMBER() OVER (PARTITION BY customer_unique_id ORDER BY purchased_at, order_id) AS n
+      FROM orders
+    ), pairs AS (
+      SELECT customer_unique_id,
+             MAX(purchased_at) FILTER (WHERE n = 2) - MAX(purchased_at) FILTER (WHERE n = 1) AS gap
+      FROM ranked
+      WHERE n <= 2
+      GROUP BY customer_unique_id
+      HAVING COUNT(*) = 2
+    )
+    SELECT AVG(EXTRACT(EPOCH FROM gap) / 86400) AS average_days_between
+    FROM pairs
+  compare: {abs_tol: '0.5'}
+  notes: Human-written. Any order status; exact elapsed time. Calendar-date difference (80.35) and whole
+    days (79.99) fall inside the 0.5-day tolerance. 897 of the 2,997 customers placed their second order
+    the same day.
+  reference_result:
+    columns:
+    - {name: average_days_between, type: number}
+    rows:
+    - ['80.349980902970872106695587']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: 4442f0c89891b0e947a0206f423290fd5937934bff98845b0c1092460bb14014

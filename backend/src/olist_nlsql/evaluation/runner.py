@@ -31,7 +31,8 @@ from olist_nlsql.pipeline import NlSqlPipeline, PipelineResult
 from olist_nlsql.sqlsafety import SqlValidator
 
 RESULTS_DIR = REPO_ROOT / "eval" / "results"
-RECORD_VERSION = 1
+RECORD_VERSION = 2  # 2 adds per-attempt SQL and validation codes
+READABLE_VERSIONS = (1, 2)
 FAKE_REFERENCE_MODEL = "fake-reference"
 
 # ADR 0006 failure categories. The first group is assigned automatically from the
@@ -54,6 +55,16 @@ Category = Literal[
     "no_reference",
 ]
 CATEGORIES: tuple[str, ...] = get_args(Category)
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptOutcome:
+    """One model call: what the model wrote and what the validator said about it."""
+
+    kind: str  # generation | repair
+    outcome: str  # accepted | rejected | unanswerable | model_error | parse_error
+    validation_codes: tuple[str, ...]
+    sql: str | None  # as the model wrote it
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,6 +97,7 @@ class ItemOutcome:
     generated_sql: str | None
     validated_sql: str | None
     reference_sql: str
+    attempts: tuple[AttemptOutcome, ...] = ()  # empty in version 1 records
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,8 +179,10 @@ def _git(*args: str) -> str | None:
 
 
 def git_state() -> tuple[str | None, bool | None]:
+    """HEAD and whether the tree is dirty. Run records waiting to be committed don't count:
+    they can't change a run, and repeated runs would otherwise mark each other dirty."""
     commit = _git("rev-parse", "HEAD")
-    status = _git("status", "--porcelain")
+    status = _git("status", "--porcelain", "--", ".", ":(exclude)eval/results")
     return commit, (None if status is None else bool(status))
 
 
@@ -227,6 +241,9 @@ def evaluate_item(
         generated_sql=result.generated_sql,
         validated_sql=result.validated_sql,
         reference_sql=item.reference_sql,
+        attempts=tuple(
+            AttemptOutcome(a.kind, a.outcome, a.validation_codes, a.sql) for a in result.attempts
+        ),
     )
 
 
@@ -253,6 +270,7 @@ def run(
     settings: Settings,
     checkpoint: str | None = None,
     ids: Sequence[str] = (),
+    label: str | None = None,
     progress: Callable[[ItemOutcome], None] | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> RunRecord:
@@ -277,7 +295,7 @@ def run(
     commit, dirty = git_state()
     stamp = started.strftime("%Y%m%dT%H%M%SZ")
     record = RunRecord(
-        run_id=f"{stamp}_{benchmark.split}_{_slug(model_id)}",
+        run_id=f"{stamp}_{benchmark.split}_{_slug(model_id)}" + (f"_{label}" if label else ""),
         split=benchmark.split,
         started_at=started.isoformat(timespec="seconds"),
         finished_at=finished.isoformat(timespec="seconds"),
@@ -376,10 +394,20 @@ def to_json(record: RunRecord) -> str:
 
 def from_json(text: str) -> RunRecord:
     data = json.loads(text)
-    if data.get("version") != RECORD_VERSION:
+    if data.get("version") not in READABLE_VERSIONS:
         raise ValueError(f"unsupported run record version {data.get('version')!r}")
     data["items"] = tuple(
-        ItemOutcome(**{**i, "tags": tuple(i["tags"]), "assumptions": tuple(i["assumptions"])})
+        ItemOutcome(
+            **{
+                **i,
+                "tags": tuple(i["tags"]),
+                "assumptions": tuple(i["assumptions"]),
+                "attempts": tuple(
+                    AttemptOutcome(**{**a, "validation_codes": tuple(a["validation_codes"])})
+                    for a in i.get("attempts", ())
+                ),
+            }
+        )
         for i in data["items"]
     )
     return RunRecord(**data)

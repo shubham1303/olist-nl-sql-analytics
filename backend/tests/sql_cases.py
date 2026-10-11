@@ -164,6 +164,18 @@ ACCEPTED: list[Case] = [
         "GROUP BY 1",
     ),
     Case(
+        # dev-034: a range condition beside the key keeps cohort members with no return
+        "join_key_plus_range_condition",
+        "WITH f AS (SELECT customer_unique_id, MIN(purchased_at) AS first_at FROM orders "
+        "GROUP BY customer_unique_id) "
+        "SELECT COUNT(*) AS cohort, COUNT(*) FILTER (WHERE x.returned) AS returned FROM "
+        "(SELECT f.customer_unique_id, COUNT(o.order_id) > 0 AS returned FROM f "
+        "LEFT JOIN orders o ON o.customer_unique_id = f.customer_unique_id "
+        "AND o.purchased_at > f.first_at AND o.purchased_at <= f.first_at + INTERVAL '90 days' "
+        "WHERE f.first_at >= '2018-01-01' AND f.first_at < '2018-02-01' "
+        "GROUP BY f.customer_unique_id) x",
+    ),
+    Case(
         "exists",
         "SELECT COUNT(*) FROM orders o WHERE EXISTS (SELECT 1 FROM order_items i "
         "WHERE i.order_id = o.order_id AND i.product_category = 'toys')",
@@ -525,10 +537,34 @@ REJECTED: list[Case] = [
         "SELECT COUNT(*) FROM orders o JOIN products p ON o.order_id = p.product_id",
         E.INVALID_JOIN_PATH,
     ),
+    # --- extra conditions beside a key narrow a join; they never make one valid
+    Case(
+        "join_range_condition_only",
+        "SELECT COUNT(*) FROM orders o JOIN order_items i ON i.price > o.revenue",
+        E.INVALID_JOIN_PATH,
+    ),
+    Case(
+        "join_non_key_equality_beside_key",
+        "SELECT COUNT(*) FROM orders o JOIN order_items i "
+        "ON o.order_id = i.order_id AND o.customer_unique_id = i.seller_id",
+        E.INVALID_JOIN_PATH,
+    ),
+    Case(
+        "items_payments_many_to_many_with_condition",
+        "SELECT SUM(i.price) FROM order_items i JOIN order_payments p "
+        "ON i.order_id = p.order_id AND p.payment_value > i.price",
+        E.INVALID_JOIN_PATH,
+    ),
     # --- fan-out: syntactically valid SQL with inflated answers
     Case(
         "fanout_revenue_items",
         "SELECT SUM(o.revenue) FROM analytics.orders o JOIN analytics.order_items i ON o.order_id = i.order_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "fanout_revenue_items_with_condition",
+        "SELECT SUM(o.revenue) FROM orders o JOIN order_items i "
+        "ON o.order_id = i.order_id AND i.price > o.freight_total",
         E.FANOUT_RISK,
     ),
     Case(

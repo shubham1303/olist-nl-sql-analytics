@@ -1,5 +1,6 @@
 """Runner, metrics and report with a fake model and a scripted executor (no db, no AWS)."""
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -184,3 +185,39 @@ def test_held_out_report_shows_checkpoint() -> None:
         {"test-001": [reply_json(SQL)]}, [make_item("test-001")], split="test", checkpoint="why"
     )
     assert "Held-out checkpoint run.** Reason: why" in report.render(record)
+
+
+def test_every_attempt_is_recorded_with_its_sql_and_codes() -> None:
+    bad = "SELECT SUM(total_revenue) FROM sellers"
+    record = run_with({"dev-001": [reply_json(bad), reply_json(SQL)]}, [make_item("dev-001")])
+    first, repair = record.items[0].attempts
+    assert (first.kind, first.outcome, first.sql) == ("generation", "rejected", bad)
+    assert first.validation_codes == ("UNAPPROVED_RELATION",)
+    assert (repair.kind, repair.outcome, repair.validation_codes) == ("repair", "accepted", ())
+    assert record.items[0].correct
+    md = report.render(record)
+    assert "## Attempts that did not pass" in md
+    assert "| dev-001 | generation | rejected | UNAPPROVED_RELATION |" in md
+
+
+def test_version_1_records_without_attempts_still_load(tmp_path: Path) -> None:
+    record = run_with({"dev-001": [reply_json(SQL)]}, [make_item("dev-001")])
+    data = json.loads(runner.to_json(record))
+    data["version"] = 1
+    for item in data["items"]:
+        del item["attempts"]
+    old = runner.from_json(json.dumps(data))
+    assert old.items[0].attempts == () and old.items[0].correct
+    assert "Attempts that did not pass" not in report.render(old)
+
+
+def test_label_is_appended_to_the_run_id() -> None:
+    record = runner.run(
+        Benchmark("dev", (make_item("dev-001"),)),
+        model_for=runner.reference_model,
+        executor=ScriptedExecutor(),
+        settings=Settings(),
+        label="r2of3",
+        now=fixed_now,
+    )
+    assert record.run_id == "20261008T120000Z_dev_fake-reference_r2of3"

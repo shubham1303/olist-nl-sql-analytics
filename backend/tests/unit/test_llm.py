@@ -130,7 +130,7 @@ def _response(stop_reason: str = "tool_use", answer: dict[str, Any] | None = Non
     return SimpleNamespace(
         stop_reason=stop_reason,
         content=content,
-        model="us.anthropic.claude-sonnet-5",
+        model="us.anthropic.claude-sonnet-4-6",
         usage=SimpleNamespace(
             input_tokens=400,
             output_tokens=300,
@@ -159,14 +159,14 @@ def test_request_forces_the_answer_tool_with_thinking_disabled() -> None:
     assert params["tools"][0]["name"] == "submit_answer"
     assert params["tools"][0]["input_schema"] == OUTPUT_SCHEMA
     assert params["tool_choice"] == {"type": "tool", "name": "submit_answer"}
-    # Bedrock + Claude Sonnet 5: a forced tool call requires thinking disabled.
+    # A forced tool call requires thinking disabled (ADR 0016, 0019).
     assert params["thinking"] == {"type": "disabled"}
     assert params["system"] == [
         {"type": "text", "text": "SYSTEM", "cache_control": {"type": "ephemeral"}}
     ]
     assert params["messages"] == [{"role": "user", "content": "Question: x"}]
     assert params["output_config"] == {"effort": "low"}
-    # Structured outputs are unsupported for Sonnet 5 on Bedrock; sampling params are rejected.
+    # No structured outputs (Sonnet 5 on Bedrock lacks them; ADR 0019); no sampling params.
     assert "format" not in params["output_config"]
     assert "temperature" not in params
 

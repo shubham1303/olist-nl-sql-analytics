@@ -1,7 +1,7 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phase 4 in progress:** dev baseline 29/30 (Sonnet 4.6); test items to verify, then one held-out run. Live Bedrock calls await model access (ADR 0016). Decisions locked in [docs/adr/](docs/adr/README.md).
-Last updated: 2026-10-08
+Status: **Phases 0–5 done** (Phase 5 merges with PR #2). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). Next: Phase 6 (local API + UI). Decisions locked in [docs/adr/](docs/adr/README.md).
+Last updated: 2026-10-11
 
 ---
 
@@ -28,10 +28,10 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 |---|---|---|
 | Database | Aurora Serverless v2 PG + RDS Data API (AWS); Docker Postgres + psycopg (local); `QueryExecutor` abstraction with shared contract tests; `aws_s3` bulk load; auto-pause + `/status` warm-up | [0001](docs/adr/0001-database-platform.md) |
 | Security | DB role `analytics_reader` is the boundary (SELECT on `analytics` only, read-only, statement timeout); least-privilege IAM (one cluster, one secret); sqlglot is layer two with useful rejection messages | [0002](docs/adr/0002-database-is-the-security-boundary.md) |
-| LLM | Bedrock `us-east-1`, Claude Sonnet 5 via `us.anthropic.claude-sonnet-5` (verified ACTIVE); model ID only in config; ≤ 2 model calls per question; results never sent back to the model | [0003](docs/adr/0003-llm-provider-and-model.md) |
+| LLM | Bedrock `us-east-1`, Claude Sonnet 4.6 via `us.anthropic.claude-sonnet-4-6` (Sonnet 5 unavailable to the account; later config swap + re-baseline); model ID only in config; ≤ 2 model calls per question; results never sent back to the model | [0003](docs/adr/0003-llm-provider-and-model.md), [0019](docs/adr/0019-sonnet-4-6-current-model.md) |
 | Access & cost | Shared access code (hash stored server-side); route throttling; 500-char question cap; 4 KiB body; reserved concurrency; bounded output; $20 budget at 50/80/100% (alert, not cap) | [0004](docs/adr/0004-public-access-and-cost-controls.md) |
 | Schema | Curated `analytics` views over hidden `raw` schema; one `catalog.yaml` generates both prompt context and validator allowlist; geolocation excluded; catalog resolves known terms, otherwise state the assumption and answer | [0005](docs/adr/0005-curated-analytics-schema-and-catalog.md) |
-| Evaluation | 50 questions: 30 dev / 20 held-out; human-verified references; no tuning on held-out; stage metrics reported separately; no fabricated numbers | [0006](docs/adr/0006-evaluation-methodology.md) |
+| Evaluation | 57 questions: 34 dev / 23 held-out (7 human-written); human-verified references; no tuning on held-out; stage metrics reported separately; no fabricated numbers | [0006](docs/adr/0006-evaluation-methodology.md), [0018](docs/adr/0018-human-written-benchmark-items.md) |
 | Charts | Deterministic frontend rules from result shape; no LLM | [0007](docs/adr/0007-deterministic-chart-selection.md) |
 | Exclusions | No RAG/vector DB, LangChain/agents, NAT, RDS Proxy, Cognito, WAF, DynamoDB, SQS, X-Ray | [0008](docs/adr/0008-excluded-services.md) |
 | Tooling | Python 3.13 + uv + ruff + mypy strict + pytest; Vite/React/TS + Vitest + npm; Terraform single root; GitHub Actions | [0009](docs/adr/0009-tooling-and-repo-conventions.md) |
@@ -41,7 +41,7 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | Time window | 2017-01..2018-08 recommended for trends/comparisons; never auto-filtered; requested periods preserved with caveat | [0013](docs/adr/0013-recommended-time-window.md) |
 | SQL validation | sqlglot AST, fail-closed, catalog-driven allowlists; joins via relationship key domains; uniqueness-based cardinality; fan-out + bridge-attribution rules; regenerated SQL only | [0014](docs/adr/0014-sql-validation-design.md) |
 | Model-visible set | Five fact views + product attributes; `customers`, `sellers` and product lifetime columns hidden | [0015](docs/adr/0015-model-visible-relations.md) |
-| Bedrock client | `bedrock-runtime` endpoint via `anthropic.AnthropicBedrock` (InvokeModel, Messages body), `us.anthropic.claude-sonnet-5`, forced `submit_answer` tool call (no structured outputs for Sonnet 5 on Bedrock), cached catalog prompt | [0016](docs/adr/0016-bedrock-client-and-structured-output.md) |
+| Bedrock client | `bedrock-runtime` endpoint via `anthropic.AnthropicBedrock` (InvokeModel, Messages body), forced `submit_answer` tool call with thinking disabled (works on 4.6 and on Sonnet 5, which lacks structured outputs on Bedrock), cached catalog prompt | [0016](docs/adr/0016-bedrock-client-and-structured-output.md), [0019](docs/adr/0019-sonnet-4-6-current-model.md) |
 
 ---
 
@@ -57,7 +57,7 @@ API Gateway HTTP API   route throttling, CORS, 30 s integration timeout
 Lambda (Python 3.13, zip, reserved concurrency)
    ├─ 1. auth: constant-time compare of sha256(code) with ACCESS_CODE_SHA256
    ├─ 2. request validation: JSON schema, ≤ 4 KiB, question 1–500 chars
-   ├─ 3. prompt: generated from catalog.yaml (views, columns, metrics, aliases) + few-shots
+   ├─ 3. prompt: generated from catalog.yaml (views, columns, metrics, aliases); few-shots optional, none so far
    ├─ 4. Bedrock (config-driven model) → {sql, assumptions[], metrics_used[]}
    ├─ 5. sqlglot validation: one SELECT, allowlisted relations/columns/functions, LIMIT ≤ 1000
    ├─ 6. execute via RDS Data API as analytics_reader (statement_timeout 10 s)
@@ -81,7 +81,7 @@ olist-nl-sql/
 ├── plan.md
 ├── .github/workflows/ci.yml
 ├── docs/
-│   ├── adr/                    # decisions (0001–0016)
+│   ├── adr/                    # decisions (0001–0019)
 │   ├── architecture.md         # Phase 9
 │   ├── sql-safety.md           # validator guarantees, grain analysis, limitations
 │   ├── nl-to-sql.md            # pipeline flow, prompt, repair, result, failure modes
@@ -104,12 +104,14 @@ olist-nl-sql/
 │   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
 │   │   ├── llm/                # client protocol, bedrock, fake, prompts, output schema (done)
 │   │   ├── api/                # lambda_handler, local_app (dev only)     (Phase 6 / 7)
-│   │   └── evaluation/         # runner, compare, report                 (Phase 4)
+│   │   └── evaluation/         # benchmark, runner, compare, report, CLI (done)
 │   └── tests/unit | integration | live
-├── eval/                       # Phase 4
-│   ├── benchmark/dev.yaml      # 30 questions — used for tuning
-│   ├── benchmark/test.yaml     # 20 questions — held-out, never tuned on
-│   └── results/                # committed run reports (json + md), one per run
+├── eval/                       # Phases 4–5
+│   ├── benchmark/dev.yaml      # 34 questions — used for tuning
+│   ├── benchmark/test.yaml     # 23 questions — held-out, never tuned on
+│   ├── results/                # committed run reports (json + md), one per run
+│   ├── triage/                 # human failure categories per run
+│   └── CHANGELOG.md            # accuracy changes with before/after dev runs
 ├── frontend/                   # Vite + React + TS
 │   └── src/charts/selectChart.ts   # Phase 6
 └── infra/
@@ -124,14 +126,14 @@ A phase is done only when its milestone is met and CI is green.
 
 | # | Phase | Deliverables | Milestone |
 |---|---|---|---|
-| 0 | **Scaffold** | ADRs; repo skeleton; backend project (uv, ruff, mypy, pytest, config module); Vite React TS app with Vitest; Terraform root skeleton; `ci.yml`; README | All local checks that CI runs pass: backend lint/format/types/tests, frontend lint/types/tests/build, `terraform fmt`/`validate` |
+| 0 ✅ | **Scaffold** | ADRs; repo skeleton; backend project (uv, ruff, mypy, pytest, config module); Vite React TS app with Vitest; Terraform root skeleton; `ci.yml`; README | **Met:** all local checks that CI runs pass (backend lint/format/types/tests, frontend lint/types/tests/build, `terraform fmt`/`validate`); CI green on GitHub (PR #1) |
 | 1 ✅ | **Data foundation (local)** | `docker-compose.yml`; pinned-checksum download; `raw` schema + load; 8 curated `analytics` views; `analytics_reader` role; initial `catalog.yaml` + drift test; `QueryExecutor` + `PostgresExecutor`; data-model / metrics / local-database docs; integration job in CI | **Met:** 168 integration tests pass from a clean volume; role tests prove no writes/DDL/raw access even with read-only disabled; revenue identical across all views and equal to an independent CSV recomputation; audit control totals reconcile exactly |
 | 2 ✅ | **SQL safety + semantic validation** | Catalog relationships, visibility, function/cast allowlists; sqlglot validator with stable error codes; join-path + fan-out + attribution analysis; adversarial corpus; `sql-safety.md`; ADRs 0014–0015 | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
-| 3 ✅* | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met with a fake model** (unit + DB integration, all paths). *Live-model half pending: Bedrock model access not yet granted; rerun `pytest -m live -s`.* |
+| 3 ✅ | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met:** fake model (unit + DB integration, all paths) and live model: `pytest -m live` 5/5 smoke questions answered end to end (Bedrock → validator → local DB) on Sonnet 4.6, 2026-10-11 |
 | 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
-| 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
+| 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
 | 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
-| 7 | **AWS deployment** | Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
+| 7 | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
 | 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
 | 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
 
@@ -152,8 +154,11 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 | Data API 1 MiB response cap | Row, column and text-length caps |
 | Unverified benchmark references | Mandatory human verification fields; unverified items excluded from scoring |
 | Lambda packaging from Windows | Build for the Lambda platform explicitly or in CI |
-| **AWS CLI currently uses root credentials** | Before Phase 7: create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
+| **AWS CLI currently uses root credentials** | **Entry condition for Phase 7** (Phase 7 does not start until it is met): create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
 | Dataset licence (CC BY-NC-SA 4.0) | Download script; never commit raw data; attribution in README |
+| Model unavailability (happened: Sonnet 5 refused for the account, 2026-10) | Model ID only in config (`NLSQL_BEDROCK_MODEL_ID`, ADR 0019); after any model swap, re-baseline with a live smoke test, a fresh dev run and a held-out checkpoint, and report models separately |
+| Held-out contamination from repeated checkpoints | Checkpoints only at phase ends, each recorded; never change anything because of a test result. **Checkpoints so far: 2** (end of Phase 4, end of Phase 5) |
+| Small benchmark (34 dev / 23 held-out) | About 4.3 points per held-out item (about 2.9 per dev item), so differences of 1–2 items are not meaningful on their own; quote item counts, not just percentages, and repeat dev runs before claiming an improvement |
 
 ---
 
@@ -192,6 +197,25 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
+### Phase 6 (started 2026-10-11)
+
+- **Aurora resume spike** ([docs/spikes/aurora-resume.md](docs/spikes/aurora-resume.md)): on a paused cluster, a Data API call fails fast with `DatabaseResumingException` (2.9–4.2 s, never more than 6.1 s), and queries succeed 16–20 s after the first call (5 trials, mean 18.2 s). The `/status` → "resuming" → poll design fits the 30 s API Gateway limit; `/query` must return a typed "resuming" error instead of waiting. The deep-sleep case (paused more than 24 h; AWS says 30 s+) is still to measure on the throwaway cluster `olist-resume-spike`, then the cluster gets deleted.
+
+### Phase 5 (done, 2026-10-11)
+
+- Changes and before/after dev runs are logged in [eval/CHANGELOG.md](eval/CHANGELOG.md).
+- **Prompt v2** (dev-012): ranking by a NULL-able aggregate must filter `is_revenue_order` or use `NULLS LAST`; same caveat on the `revenue` metric. Dev **29/30 → 30/30** ([20261009T091218Z](eval/results/20261009T091218Z_dev_us-anthropic-claude-sonnet-4-6.md)), no regressions.
+- **Variance (2026-10-11):** four dev runs on v2 scored 30, 30, 30, 28; the SQL logic was the same in every run. Both misses were 2-decimal rounding against a 0.0005 tolerance, so review-score averages (dev-005, dev-013, dev-020, test-008, test-011) now use the default 0.005 and were re-verified.
+- **Human-written items (2026-10-11):** 7 hand-written questions added and verified (dev-031–034, test-021–023; [ADR 0018](docs/adr/0018-human-written-benchmark-items.md), splits now 34 / 23); an eighth dropped as a near-duplicate of test-008. New dev baseline **34/34** ([20261011T205414Z](eval/results/20261011T205414Z_dev_us-anthropic-claude-sonnet-4-6.md)).
+
+- **Held-out checkpoint (2026-10-11):** [20261011T205637Z](eval/results/20261011T205637Z_test_us-anthropic-claude-sonnet-4-6.md), **20/23**. Original 20 items unchanged at 19/20 (test-016 again). Human-written items 1/3: test-021 ranked NULL monthly revenue first (dev-012's mechanism, outside the v2 rule's example), test-023 was a false `INVALID_JOIN_PATH` rejection. Not acted on (held-out).
+- Caveat for reporting: the human-written items were clearly harder than the drafted ones; quote the split, not only 87%.
+
+**Next steps:**
+1. Phase 6 (local API + UI).
+2. Accuracy work later must come from dev evidence. dev-034's first-attempt `INVALID_JOIN_PATH` rejection is dev evidence about the validator's handling of per-customer CTE joins.
+3. Optional second model via config.
+
 ### Phase 4 (done, 2026-10-09)
 
 **Where it stands:** milestone met; dev baseline and one held-out checkpoint committed.
@@ -200,7 +224,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 - ADR 0017: comparison rules (names/column order ignored, extra columns allowed, percent form for rates, month normalisation, per-item tolerances) and verification pinned to a content hash.
 - 50 items (30 dev / 20 test) across all ADR 0006 areas and difficulties. Snapshots taken on the pinned Kaggle build. Review changed dev-010 (wording), dev-020 (exclude `uncategorized`) and dev-024 ("sold" = revenue orders, 3,053).
 - **All 50 items human-verified** (Shubham More). Test review changed test-008 (label column dropped so boolean or text group labels both match), test-009 ("bought something" → "placed an order", any status as in dev-029) and test-017 ("how much" → "by what percentage"). Ties and near-boundary rows checked for every ranking; `uncategorized` is in no top-k.
-- **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. ADR 0003 still names Sonnet 5; if 4.6 becomes the official model, record that in a new ADR.
+- **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. Recorded as the current model in ADR 0019 (2026-10-11).
 - Live fixes from the first runs: the parser keeps `assumptions`/`metrics_used` sent as (possibly malformed) text instead of failing the question; prompt-cache tokens are now recorded.
 - **First dev baseline:** [20261009T082119Z](eval/results/20261009T082119Z_dev_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **29/30 correct**. Miss: dev-012, triaged `wrong_filter_or_time_window` (no revenue-order filter, so NULL-revenue sellers sort first in `ORDER BY DESC`).
 - **Held-out checkpoint:** [20261009T083443Z](eval/results/20261009T083443Z_test_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **19/20 correct**. Miss: test-016, triaged `wrong_filter_or_time_window` (averaged `item_count` over all orders, including the 775 with no items). Not acted on (held-out). The record shows "uncommitted changes" because verification of test.yaml was committed together with the run; the benchmark hash pins the content.
@@ -217,6 +241,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 - Validator made idempotent (LIMIT up to max_rows + 1 accepted) after a pipeline test showed its own output failed re-validation.
 - CLI `python -m olist_nlsql ask|prompt` with `--json`, `--show-prompt`, `--fake-sql`.
 - 663 tests pass (unit + integration); live smoke test skips: **Bedrock model access not yet granted** (`agreementAvailability: NOT_AVAILABLE`).
+- *2026-10-11:* live smoke test passes, 5/5, on `us.anthropic.claude-sonnet-4-6` (Sonnet 5 still unavailable to the account).
 - ADR 0016: bedrock-runtime + `AnthropicBedrock` + `us.anthropic.claude-sonnet-5` + forced tool call. The first draft (Mantle + `output_config.format`) was corrected after checking AWS docs: structured outputs are unsupported for Sonnet 5 on Bedrock and would have returned 400.
 
 ### Phase 2 (done, 2026-09-24)
@@ -250,4 +275,4 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 - [x] `infra/main/`: Terraform version and provider pins, variables, no resources yet
 - [x] `.github/workflows/ci.yml`
 - [x] All CI-equivalent checks pass locally from a clean install
-- [ ] CI green on GitHub (needs a remote; first push is the user's call)
+- [x] CI green on GitHub (first green run: PR #1, 2026-10-11)

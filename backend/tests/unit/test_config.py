@@ -7,8 +7,8 @@ def test_defaults_when_env_is_empty() -> None:
     assert load_settings({}) == Settings()
 
 
-def test_default_model_is_sonnet_5_us_geo_profile_on_bedrock_runtime() -> None:
-    assert load_settings({}).bedrock_model_id == "us.anthropic.claude-sonnet-5"
+def test_default_model_is_sonnet_4_6_us_geo_profile_on_bedrock_runtime() -> None:
+    assert load_settings({}).bedrock_model_id == "us.anthropic.claude-sonnet-4-6"
 
 
 def test_reasoning_settings() -> None:

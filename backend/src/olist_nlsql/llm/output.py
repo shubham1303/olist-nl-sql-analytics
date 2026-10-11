@@ -1,8 +1,8 @@
 """The structured reply the model must return, and its strict application-side parser.
 
 The schema is the ``input_schema`` of the ``submit_answer`` tool (llm/bedrock.py).
-Bedrock doesn't support structured outputs for Sonnet 5 yet, so nothing actually
-enforces the schema on their side. This parser is the real check: strict on the
+The request doesn't use Bedrock structured outputs (Sonnet 5 lacks them; ADR 0019),
+so nothing enforces the schema on their side. This parser is the real check: strict on the
 fields that drive execution (can_answer, sql) and lenient only on display text
 (assumptions, metrics_used), see _strings.
 """

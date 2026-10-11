@@ -217,12 +217,11 @@ class GrainAnalyzer:
                 and isinstance(predicate.left, exp.Column)
                 and isinstance(predicate.right, exp.Column)
             ):
-                raise _fail(
-                    ErrorCode.INVALID_JOIN_PATH,
-                    f"Join condition {predicate.sql('postgres')!r} is not an equality between "
-                    "relationship keys. Join only on the keys listed in the catalog.",
-                    condition=predicate.sql("postgres"),
-                )
+                # A condition across both sides that is not a key equality, e.g.
+                # ON o.k = c.k AND o.purchased_at > c.first_at. ANDed with the key pairs it
+                # can only remove rows, so the cardinality analysis below still holds. A join
+                # with no key pair at all is still rejected after the loop.
+                continue
             a, b = predicate.left, predicate.right
             left_col, right_col = (b, a) if a.table == right.alias else (a, b)
             if left_col.table == right.alias or right_col.table != right.alias:

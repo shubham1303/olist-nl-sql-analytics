@@ -129,7 +129,7 @@ A phase is done only when its milestone is met and CI is green.
 | 2 ✅ | **SQL safety + semantic validation** | Catalog relationships, visibility, function/cast allowlists; sqlglot validator with stable error codes; join-path + fan-out + attribution analysis; adversarial corpus; `sql-safety.md`; ADRs 0014–0015 | 100% of attack corpus rejected with a useful message; LIMIT always enforced; catalog drift test passes |
 | 3 ✅* | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met with a fake model** (unit + DB integration, all paths). *Live-model half pending: Bedrock model access not yet granted; rerun `pytest -m live -s`.* |
 | 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
-| 5 | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | Measured dev improvement with a changelog; one held-out checkpoint run recorded |
+| 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
 | 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
 | 7 | **AWS deployment** | Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
 | 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
@@ -192,17 +192,20 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 5 (in progress, started 2026-10-09)
+### Phase 5 (done, 2026-10-11)
 
 - Changes and before/after dev runs are logged in [eval/CHANGELOG.md](eval/CHANGELOG.md).
 - **Prompt v2** (dev-012): ranking by a NULL-able aggregate must filter `is_revenue_order` or use `NULLS LAST`; same caveat on the `revenue` metric. Dev **29/30 → 30/30** ([20261009T091218Z](eval/results/20261009T091218Z_dev_us-anthropic-claude-sonnet-4-6.md)), no regressions.
 - **Variance (2026-10-11):** four dev runs on v2 scored 30, 30, 30, 28; the SQL logic was the same in every run. Both misses were 2-decimal rounding against a 0.0005 tolerance, so review-score averages (dev-005, dev-013, dev-020, test-008, test-011) now use the default 0.005 and were re-verified.
 - **Human-written items (2026-10-11):** 7 hand-written questions added and verified (dev-031–034, test-021–023; [ADR 0018](docs/adr/0018-human-written-benchmark-items.md), splits now 34 / 23); an eighth dropped as a near-duplicate of test-008. New dev baseline **34/34** ([20261011T205414Z](eval/results/20261011T205414Z_dev_us-anthropic-claude-sonnet-4-6.md)).
 
+- **Held-out checkpoint (2026-10-11):** [20261011T205637Z](eval/results/20261011T205637Z_test_us-anthropic-claude-sonnet-4-6.md), **20/23**. Original 20 items unchanged at 19/20 (test-016 again). Human-written items 1/3: test-021 ranked NULL monthly revenue first (dev-012's mechanism, outside the v2 rule's example), test-023 was a false `INVALID_JOIN_PATH` rejection. Not acted on (held-out).
+- Caveat for reporting: the human-written items were clearly harder than the drafted ones; quote the split, not only 87%.
+
 **Next steps:**
-1. Dev is still saturated (34/34) even with the human-written items. Options: more adversarial dev items (ambiguous wording, catalog-term traps), or move on.
-2. Optional second model via config.
-3. One held-out checkpoint at the end of the phase.
+1. Phase 6 (local API + UI).
+2. Accuracy work later must come from dev evidence. dev-034's first-attempt `INVALID_JOIN_PATH` rejection is dev evidence about the validator's handling of per-customer CTE joins.
+3. Optional second model via config.
 
 ### Phase 4 (done, 2026-10-09)
 

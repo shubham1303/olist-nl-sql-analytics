@@ -69,3 +69,25 @@ order within 90 days). None needed its tolerance to pass beyond 2-decimal roundi
 
 Dev is still saturated, so the human-written items did not expose a failure mode.
 Later dev comparisons use 34 items.
+
+## End-of-phase held-out checkpoint (2026-10-11)
+
+[20261011T205637Z](results/20261011T205637Z_test_us-anthropic-claude-sonnet-4-6.md),
+prompt v2, clean commit `f5f4423`: **20/23 correct**.
+
+| Item set | Phase 4 checkpoint (v1) | This checkpoint (v2) |
+|---|---:|---:|
+| Original 20 items | 19/20 | 19/20 |
+| Human-written 3 items | — | 1/3 |
+
+- **test-016** (original): same miss as Phase 4, `wrong_filter_or_time_window`.
+- **test-021** (human-written): ranked months by `SUM(revenue) DESC` without `NULLS LAST`,
+  so 2018-10 (NULL revenue) came first. Same mechanism as dev-012; the v2 rule did not
+  carry over to this case.
+- **test-023** (human-written): correct SQL rejected as `INVALID_JOIN_PATH`, and the
+  repair too (`validator_rejection_false`). The validator cannot see that `rn = 1` /
+  `rn = 2` filters make each side unique per customer.
+
+Per ADR 0006 none of these motivate a change. The human-written items were harder than
+the drafted ones, and that is the main finding: a held-out score from drafted
+questions alone overstated accuracy.

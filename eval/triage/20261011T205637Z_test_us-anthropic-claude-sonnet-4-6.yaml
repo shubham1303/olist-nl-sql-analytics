@@ -1,0 +1,9 @@
+test-016:
+  category: wrong_filter_or_time_window
+  note: Same as the Phase 4 checkpoint. Averaged item_count over all orders (1.13), including the 775 with no items; reference uses revenue orders (1.1416). Held-out, not acted on.
+test-021:
+  category: wrong_filter_or_time_window
+  note: Same mechanism as dev-012, despite the prompt v2 rule. ORDER BY monthly revenue DESC without NULLS LAST or a revenue filter, so 2018-10 (no revenue orders, NULL revenue) sorted first and was returned with NULL differences. Human-written item. Held-out, not acted on.
+test-023:
+  category: validator_rejection_false
+  note: Correct SQL (rn = 1 and rn = 2 CTEs from orders, joined on customer_unique_id, exact elapsed days) rejected as INVALID_JOIN_PATH, and the repair was rejected too. The validator cannot see that the rn = 1 / rn = 2 filters make each side unique per customer. dev-034 hit the same rejection but its repair passed. Human-written item. Held-out, not acted on.

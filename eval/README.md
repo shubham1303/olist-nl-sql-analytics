@@ -19,6 +19,8 @@ uv run python -m olist_nlsql.evaluation snapshot --split dev   # store reference
 uv run python -m olist_nlsql.evaluation show --split dev dev-007
 uv run python -m olist_nlsql.evaluation verify --split dev --by "Your Name" dev-007
 uv run python -m olist_nlsql.evaluation run --split dev        # real model (Bedrock)
+uv run python -m olist_nlsql.evaluation run --split dev --repeat 3
+uv run python -m olist_nlsql.evaluation compare --before <3 records> --after <3 records>
 uv run python -m olist_nlsql.evaluation run --split test --checkpoint "end of phase 4"
 uv run python -m olist_nlsql.evaluation report ../eval/results/<run_id>.json
 ```
@@ -50,7 +52,27 @@ Snapshots must come from a database built from the pinned Kaggle files
   self-test that should score 100%. Its reports are marked as such and must not be
   quoted as accuracy. Write them elsewhere with `--results-dir`.
 - Test-split runs need `--checkpoint "reason"` and are always recorded. Don't change
-  anything because of a test-split failure.
+  anything because of a test-split failure. They are single runs (`--repeat` is refused).
+- Each item records every model call: the SQL as written, the outcome and the validator
+  codes (record version 2). The report lists attempts that did not pass.
+- A run is "dirty" only if tracked code or data changed; uncommitted files in `results/`
+  don't count.
+
+## Before/after claims
+
+One dev run can move by a couple of items with nothing changed (four identical runs
+scored 30, 30, 30, 28). A claim that a change helped needs at least three runs per side:
+
+1. `run --split dev --repeat 3` before and after the change (records are suffixed
+   `_r1of3` … `_r3of3`). Reuse "before" runs when nothing else changed.
+2. `compare --before … --after …` prints the per-run counts, mean, min and max, the
+   items that weren't correct every time, and a verdict: **improvement** when the mean
+   rises and the minimum doesn't fall, **regression** when the mean falls and the
+   maximum doesn't rise, otherwise **no clear difference**. It refuses held-out runs,
+   fake-model runs, and runs over different benchmark versions or items.
+3. Put the comparison in [CHANGELOG.md](CHANGELOG.md).
+
+A 34-item run costs about 250k tokens (about 90% read from cache) and 65–100 s.
 
 ## Triage
 

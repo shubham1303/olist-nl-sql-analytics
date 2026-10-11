@@ -5,8 +5,10 @@ snapshot --split dev           run reference SQL, store results (needs the datab
 show --split dev ID...         print items for review
 verify --split dev --by NAME ID...   record that a person checked SQL and result
 run --split dev                run the pipeline on a split, write a run record
-run --split test --checkpoint "why"  held-out run (always recorded)
+run --split dev --repeat 3     three runs, one record each (for before/after claims)
+run --split test --checkpoint "why"  held-out run (always recorded, never repeated)
 report RESULTS.json            (re)write the markdown report, applying triage
+compare --before A.json... --after B.json...   mean/min comparison of repeated dev runs
 """
 
 import argparse
@@ -19,7 +21,7 @@ from olist_nlsql.config import ConfigError, load_settings
 from olist_nlsql.db import QueryExecutionError, QueryExecutor
 from olist_nlsql.dbsetup.env import MissingSettingError, load_dotenv, reader_conninfo
 from olist_nlsql.evaluation import benchmark as bm
-from olist_nlsql.evaluation import report, runner
+from olist_nlsql.evaluation import multirun, report, runner
 from olist_nlsql.evaluation.compare import Table
 from olist_nlsql.llm.client import ModelClient
 from olist_nlsql.sqlsafety import SqlValidator
@@ -128,10 +130,15 @@ def main(argv: list[str] | None = None) -> int:
         help="harness self-test: the 'model' answers with the reference SQL (no Bedrock)",
     )
     r.add_argument("--results-dir", type=Path, default=runner.RESULTS_DIR)
+    r.add_argument("--repeat", type=int, default=1, help="run N times, one record each (dev only)")
     r.add_argument("ids", nargs="*", help="only these items (default: all)")
     rep = sub.add_parser("report", help="write the markdown report for a run record")
     rep.add_argument("record", type=Path)
     rep.add_argument("--triage", type=Path, help="default: eval/triage/<run_id>.yaml")
+    cmp = sub.add_parser("compare", help="compare repeated dev runs before and after a change")
+    cmp.add_argument("--before", type=Path, nargs="+", required=True)
+    cmp.add_argument("--after", type=Path, nargs="+", required=True)
+    cmp.add_argument("--out", type=Path, help="also write the markdown here")
     args = parser.parse_args(argv)
 
     try:
@@ -154,6 +161,18 @@ def main(argv: list[str] | None = None) -> int:
             md = args.record.with_suffix(".md")
             md.write_text(report.render(record, triage), encoding="utf-8", newline="\n")
             print(f"wrote {md}")
+            return 0
+
+        if args.command == "compare":
+            before, after = (
+                [runner.from_json(p.read_text(encoding="utf-8")) for p in paths]
+                for paths in (args.before, args.after)
+            )
+            comparison = multirun.render(before, after)
+            print(comparison, end="")
+            if args.out:
+                args.out.write_text(comparison, encoding="utf-8", newline="\n")
+                print(f"wrote {args.out}")
             return 0
 
         return _split_command(args, bm.load(args.split, args.benchmark_dir))
@@ -199,6 +218,10 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
         return 0
 
     # run
+    if args.repeat < 1:
+        raise ValueError("--repeat must be at least 1")
+    if args.repeat > 1 and benchmark.split == "test":
+        raise ValueError("held-out checkpoints are single runs; --repeat is for dev")
     settings = load_settings()
     model_for: Callable[[bm.BenchmarkItem], ModelClient]
     if args.fake_reference:
@@ -211,23 +234,26 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
         def model_for(_item: bm.BenchmarkItem) -> ModelClient:
             return client
 
-    record = runner.run(
-        benchmark,
-        model_for=model_for,
-        executor=_executor(),
-        settings=settings,
-        checkpoint=args.checkpoint,
-        ids=args.ids,
-        progress=lambda o: print(
-            f"{o.id}: {o.status}, correct={o.correct} ({o.category})", flush=True
-        ),
-    )
-    path = runner.save(record, args.results_dir)
-    md = path.with_suffix(".md")
-    md.write_text(report.render(record), encoding="utf-8", newline="\n")
-    c = record.summary["counts"]
-    print(f"\nscored {record.summary['scored']}: correct {c['correct']}")
-    print(f"wrote {path}\nwrote {md}")
+    executor = _executor()
+    for n in range(1, args.repeat + 1):
+        record = runner.run(
+            benchmark,
+            model_for=model_for,
+            executor=executor,
+            settings=settings,
+            checkpoint=args.checkpoint,
+            ids=args.ids,
+            label=f"r{n}of{args.repeat}" if args.repeat > 1 else None,
+            progress=lambda o: print(
+                f"{o.id}: {o.status}, correct={o.correct} ({o.category})", flush=True
+            ),
+        )
+        path = runner.save(record, args.results_dir)
+        md = path.with_suffix(".md")
+        md.write_text(report.render(record), encoding="utf-8", newline="\n")
+        c = record.summary["counts"]
+        print(f"\nscored {record.summary['scored']}: correct {c['correct']}")
+        print(f"wrote {path}\nwrote {md}")
     return 0
 
 

@@ -196,9 +196,10 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 - Changes and before/after dev runs are logged in [eval/CHANGELOG.md](eval/CHANGELOG.md).
 - **Prompt v2** (dev-012): ranking by a NULL-able aggregate must filter `is_revenue_order` or use `NULLS LAST`; same caveat on the `revenue` metric. Dev **29/30 → 30/30** ([20261009T091218Z](eval/results/20261009T091218Z_dev_us-anthropic-claude-sonnet-4-6.md)), no regressions.
+- **Variance (2026-10-11):** four dev runs on v2 scored 30, 30, 30, 28; the SQL logic was the same in every run. Both misses were 2-decimal rounding against a 0.0005 tolerance, so review-score averages (dev-005, dev-013, dev-020, test-008, test-011) now use the default 0.005 and were re-verified.
 
 **Next steps:**
-1. Dev is saturated at 30/30 on a single run. Consider repeat runs to measure variance, and harder or human-written dev items, before more prompt changes.
+1. Dev is saturated: harder or human-written dev items before more prompt changes.
 2. Optional second model via config.
 3. One held-out checkpoint at the end of the phase.
 

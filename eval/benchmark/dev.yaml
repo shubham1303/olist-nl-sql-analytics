@@ -68,15 +68,14 @@ items:
   tags: [review, aggregation]
   reference_sql: |
     SELECT AVG(review_score) AS average_review_score FROM orders
-  compare: {abs_tol: '0.0005'}
   reference_result:
     columns:
     - {name: average_review_score, type: number}
     rows:
     - ['4.0863863468223324']
   verified_by: Shubham More
-  verified_on: '2026-10-09'
-  verified_hash: 4654c969333e1dcd6ea102e1877a628a8196d16f5ca57a53bde4a2926d196339
+  verified_on: '2026-10-11'
+  verified_hash: 4d091e1103db0ec47c09b5ca920de532602dad5256a31ef06d90b89c0e338906
 - id: dev-006
   question: What is the overall late delivery rate?
   difficulty: easy
@@ -261,7 +260,6 @@ items:
     SELECT delivery_status, AVG(review_score) AS average_review_score
     FROM orders
     GROUP BY delivery_status
-  compare: {abs_tol: '0.0005'}
   reference_result:
     columns:
     - {name: delivery_status, type: text}
@@ -273,8 +271,8 @@ items:
     - [missing_delivery_date, '4.5000000000000000']
     - [early, '4.2941143109921396']
   verified_by: Shubham More
-  verified_on: '2026-10-09'
-  verified_hash: a7e5942ab357bcf45548044d7434a6620306cba3657b6bd6cd71d325fe77418a
+  verified_on: '2026-10-11'
+  verified_hash: 46754a2b4756902c63e5bf97af9b0294483a7ec4cf026619f0d69d107602b5bc
 - id: dev-014
   question: How many orders from customers in São Paulo state (SP) were delivered?
   difficulty: easy
@@ -409,7 +407,7 @@ items:
     HAVING COUNT(review_score) >= 500
     ORDER BY average_review_score
     LIMIT 5
-  compare: {order_matters: true, abs_tol: '0.0005'}
+  compare: {order_matters: true}
   notes: '''uncategorized'' is the label for products without a category, so it is excluded. 5th vs 6th:
     4.026 vs 4.038, no tie.'
   reference_result:
@@ -423,8 +421,8 @@ items:
     - [furniture_decor, '4.0092216317599250']
     - [computers_accessories, '4.0255677545495563']
   verified_by: Shubham More
-  verified_on: '2026-10-09'
-  verified_hash: 82536d93e2fc35d3ab7a4a21e99743a2d54466f179a2548ec2c5adf6748ad3e8
+  verified_on: '2026-10-11'
+  verified_hash: 3fc246d03fe02450a26a4f9e57941f85251f91011a3bca3352ef94440835abc3
 - id: dev-021
   question: Among sellers with at least 20 delivered orders, which 3 have the highest late delivery rate?
   difficulty: hard

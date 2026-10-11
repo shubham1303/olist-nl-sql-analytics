@@ -32,3 +32,25 @@ dev-012 now uses `ORDER BY revenue DESC NULLS LAST` (plus `HAVING SUM(revenue) I
 NULL`). No other item changed outcome. This is one run per prompt version, so a
 one-item difference is within run-to-run variation on its own; the generated SQL shows
 the rule being applied.
+
+## Variance check and review-average tolerance (2026-10-11)
+
+**Repeat runs:** three more dev runs on prompt v2 from commit `b481992`
+([20261011T203851Z](results/20261011T203851Z_dev_us-anthropic-claude-sonnet-4-6.md),
+[20261011T204001Z](results/20261011T204001Z_dev_us-anthropic-claude-sonnet-4-6.md),
+[20261011T204110Z](results/20261011T204110Z_dev_us-anthropic-claude-sonnet-4-6.md)).
+With the first v2 run, that is four runs: **30, 30, 30, 28** correct. The latter two
+records say "uncommitted changes" only because earlier run files were still uncommitted.
+
+- The SQL logic was the same in every run for every item, even where the text varied
+  (up to 4 distinct texts for dev-012, dev-020 and dev-029). dev-012 was correct in all 4.
+- Both misses (dev-005, dev-013 in 20261011T204110Z) are review-score averages that the
+  model rounded to 2 decimals (4.09 vs 4.0864) instead of 4. Their tolerance was 0.0005,
+  so a correct answer failed: a scoring artefact, not a model error.
+
+**Change:** review-score averages (dev-005, dev-013, dev-020, test-008, test-011) now use
+the default `abs_tol` of 0.005, which accepts rounding to 2 decimals like every other
+non-rate value. This is a comparison-rule change found on dev; it is applied to the two
+test items for consistency, not because of any test result (test-008 passed the
+checkpoint by 0.00001). All five items were re-verified. Rankings stay distinct at 2
+decimals (closest pair: dev-020, 4.0031 vs 4.0092). Rates keep 0.0005.

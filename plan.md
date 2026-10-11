@@ -133,7 +133,7 @@ A phase is done only when its milestone is met and CI is green.
 | 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
 | 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
 | 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
-| 7 | **AWS deployment** | Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
+| 7 | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
 | 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
 | 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
 
@@ -154,8 +154,11 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 | Data API 1 MiB response cap | Row, column and text-length caps |
 | Unverified benchmark references | Mandatory human verification fields; unverified items excluded from scoring |
 | Lambda packaging from Windows | Build for the Lambda platform explicitly or in CI |
-| **AWS CLI currently uses root credentials** | Before Phase 7: create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
+| **AWS CLI currently uses root credentials** | **Entry condition for Phase 7** (Phase 7 does not start until it is met): create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
 | Dataset licence (CC BY-NC-SA 4.0) | Download script; never commit raw data; attribution in README |
+| Model unavailability (happened: Sonnet 5 refused for the account, 2026-10) | Model ID only in config (`NLSQL_BEDROCK_MODEL_ID`, ADR 0019); after any model swap, re-baseline with a live smoke test, a fresh dev run and a held-out checkpoint, and report models separately |
+| Held-out contamination from repeated checkpoints | Checkpoints only at phase ends, each recorded; never change anything because of a test result. **Checkpoints so far: 2** (end of Phase 4, end of Phase 5) |
+| Small benchmark (34 dev / 23 held-out) | About 4.3 points per held-out item (about 2.9 per dev item), so differences of 1–2 items are not meaningful on their own; quote item counts, not just percentages, and repeat dev runs before claiming an improvement |
 
 ---
 

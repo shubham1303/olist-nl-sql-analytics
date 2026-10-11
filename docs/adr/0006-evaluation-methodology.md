@@ -1,6 +1,6 @@
 # 0006. 50-question benchmark, 30 dev / 20 held-out, verified references
 
-- Status: Accepted
+- Status: Accepted (split sizes amended by [0018](0018-human-written-benchmark-items.md))
 - Date: 2026-09-23
 
 ## Context

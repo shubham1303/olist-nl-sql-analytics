@@ -619,3 +619,124 @@ items:
   verified_by: Shubham More
   verified_on: '2026-10-09'
   verified_hash: ae855efa5dba989bbdf074920136a31cc335da99eb47c91af38420ba5d6b91d3
+- id: dev-031
+  question: How many customers placed more than one order, and what percentage of all unique customers
+    do they represent?
+  difficulty: medium
+  tags: [customer, multi_step, human_written]
+  reference_sql: |
+    WITH per_customer AS (
+      SELECT customer_unique_id, COUNT(*) AS orders
+      FROM orders
+      GROUP BY customer_unique_id
+    )
+    SELECT COUNT(*) FILTER (WHERE orders > 1) AS multi_order_customers,
+           (COUNT(*) FILTER (WHERE orders > 1))::numeric / COUNT(*) AS share_of_customers
+    FROM per_customer
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  notes: Human-written. 'Placed' counts any order status (as in dev-004). The catalog repeat customer
+    rate (delivered orders) would give 2,801.
+  reference_result:
+    columns:
+    - {name: multi_order_customers, type: integer}
+    - {name: share_of_customers, type: number}
+    rows:
+    - [2997, '0.03118756243756243756']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: 565172359b2da5dfc74b7dafe2b08d35830ec81739c7edc89d6030685ceb36fe
+- id: dev-032
+  question: For each month of 2018, what percentage of delivered orders arrived late? Return only months
+    with at least 100 delivered orders, ranked from highest to lowest late delivery rate.
+  difficulty: medium
+  tags: [delivery, time_series, human_written]
+  reference_sql: |
+    SELECT purchase_month,
+           (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate
+    FROM orders
+    WHERE purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'
+    GROUP BY purchase_month
+    HAVING COUNT(*) FILTER (WHERE is_delivered) >= 100
+    ORDER BY late_delivery_rate DESC
+  compare: {order_matters: true, abs_tol: '0.0005', allow_percent: true}
+  notes: Human-written. Months by purchase date (the catalog's order date). 2018-09 and 2018-10 have no
+    delivered orders.
+  reference_result:
+    columns:
+    - {name: purchase_month, type: date}
+    - {name: late_delivery_rate, type: number}
+    rows:
+    - ['2018-03-01', '0.18963301442239040411']
+    - ['2018-02-01', '0.14126620900076277651']
+    - ['2018-05-01', '0.06563935397836716551']
+    - ['2018-08-01', '0.06188001889466225791']
+    - ['2018-01-01', '0.05700947800254632904']
+    - ['2018-04-01', '0.04501323918799646955']
+    - ['2018-07-01', '0.03378817413905133203']
+    - ['2018-06-01', '0.01164698162729658793']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: b3850c978666826da6593d943ac32ad24309beaabab9d77ef82c4314a25dc972
+- id: dev-033
+  question: What percentage of total merchandise revenue comes from the top 10% of customers ranked by
+    their total spending?
+  difficulty: hard
+  tags: [customer, aggregation, multi_step, human_written]
+  reference_sql: |
+    WITH spend AS (
+      SELECT customer_unique_id, SUM(revenue) AS revenue
+      FROM orders
+      WHERE is_revenue_order
+      GROUP BY customer_unique_id
+    ), ranked AS (
+      SELECT revenue, NTILE(10) OVER (ORDER BY revenue DESC) AS decile
+      FROM spend
+    )
+    SELECT SUM(revenue) FILTER (WHERE decile = 1) / SUM(revenue) AS top_decile_revenue_share
+    FROM ranked
+  compare: {allow_percent: true}
+  notes: Human-written. Ranked over the 94,983 customers with revenue. Counting the 1,113 customers with
+    no revenue as zero spenders gives 0.4137, inside the tolerance; sorting their NULL spend first under
+    DESC does not.
+  reference_result:
+    columns:
+    - {name: top_decile_revenue_share, type: number}
+    rows:
+    - ['0.41135773918034688512']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: 16247faff18d82e9518e7c070c0a39a7e6e36e3e1f1c3ad0266d4977a571f688
+- id: dev-034
+  question: For customers whose first purchase was in January 2018, how many returned to place another
+    order within 90 days, and what percentage of that cohort does this represent?
+  difficulty: hard
+  tags: [customer, time_series, multi_step, human_written]
+  reference_sql: |
+    WITH with_first AS (
+      SELECT customer_unique_id, purchased_at,
+             MIN(purchased_at) OVER (PARTITION BY customer_unique_id) AS first_purchased_at
+      FROM orders
+    ), cohort AS (
+      SELECT customer_unique_id,
+             COUNT(*) FILTER (WHERE purchased_at > first_purchased_at
+                              AND purchased_at <= first_purchased_at + INTERVAL '90 days') > 0 AS returned
+      FROM with_first
+      WHERE first_purchased_at >= '2018-01-01' AND first_purchased_at < '2018-02-01'
+      GROUP BY customer_unique_id
+    )
+    SELECT COUNT(*) FILTER (WHERE returned) AS returning_customers,
+           (COUNT(*) FILTER (WHERE returned))::numeric / COUNT(*) AS returning_share
+    FROM cohort
+  compare: {abs_tol: '0.0005', allow_percent: true}
+  notes: Human-written. Cohort = customers whose first order (any status) was in 2018-01. Any later order
+    within 90 days counts, including later the same day; counting from the next day gives 88, counting
+    orders at the identical timestamp gives 159.
+  reference_result:
+    columns:
+    - {name: returning_customers, type: integer}
+    - {name: returning_share, type: number}
+    rows:
+    - [140, '0.01992882562277580071']
+  verified_by: Shubham More
+  verified_on: '2026-10-11'
+  verified_hash: 0e80f9680d6ac040a011897488fd34ad085aa6741c0c1de45a1f09d17254a3ae

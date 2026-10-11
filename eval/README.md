@@ -1,12 +1,13 @@
 # Evaluation
 
 The NL-to-SQL benchmark ([ADR 0006](../docs/adr/0006-evaluation-methodology.md),
-comparison rules in [ADR 0017](../docs/adr/0017-benchmark-comparison-and-verification.md)).
+comparison rules in [ADR 0017](../docs/adr/0017-benchmark-comparison-and-verification.md),
+human-written items in [ADR 0018](../docs/adr/0018-human-written-benchmark-items.md)).
 
 | Path | What |
 |---|---|
-| `benchmark/dev.yaml` | 30 development questions: the only split used while tuning |
-| `benchmark/test.yaml` | 20 held-out questions: checkpoint runs only, never tuned on |
+| `benchmark/dev.yaml` | 34 development questions (4 human-written): the only split used while tuning |
+| `benchmark/test.yaml` | 23 held-out questions (3 human-written): checkpoint runs only, never tuned on |
 | `results/` | One JSON record + markdown report per run, committed |
 | `triage/<run_id>.yaml` | Human failure categories for a run (optional) |
 

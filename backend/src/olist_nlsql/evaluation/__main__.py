@@ -38,7 +38,7 @@ def check(benchmarks: dict[bm.Split, bm.Benchmark]) -> list[str]:
     for split, benchmark in benchmarks.items():
         expected = bm.EXPECTED_SIZES[split]
         if len(benchmark.items) != expected:
-            problems.append(f"{split}: {len(benchmark.items)} items, ADR 0006 expects {expected}")
+            problems.append(f"{split}: {len(benchmark.items)} items, ADR 0018 expects {expected}")
         for item in benchmark.items:
             result = validator.validate(item.reference_sql)
             if not result.ok:

@@ -197,6 +197,10 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
+### Phase 6 (started 2026-10-11)
+
+- **Aurora resume spike** ([docs/spikes/aurora-resume.md](docs/spikes/aurora-resume.md)): on a paused cluster, a Data API call fails fast with `DatabaseResumingException` (2.9–4.2 s, never more than 6.1 s), and queries succeed 16–20 s after the first call (5 trials, mean 18.2 s). The `/status` → "resuming" → poll design fits the 30 s API Gateway limit; `/query` must return a typed "resuming" error instead of waiting. The deep-sleep case (paused more than 24 h; AWS says 30 s+) is still to measure on the throwaway cluster `olist-resume-spike`, then the cluster gets deleted.
+
 ### Phase 5 (done, 2026-10-11)
 
 - Changes and before/after dev runs are logged in [eval/CHANGELOG.md](eval/CHANGELOG.md).

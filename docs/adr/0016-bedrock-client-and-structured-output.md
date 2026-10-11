@@ -1,6 +1,6 @@
 # 0016. Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies
 
-- Status: Accepted (live verification pending Bedrock model access)
+- Status: Accepted; model ID and forced-tool rationale amended by [ADR 0019](0019-sonnet-4-6-current-model.md) (live-verified on Sonnet 4.6)
 - Date: 2026-09-24
 - Refines [ADR 0003](0003-llm-provider-and-model.md): same region, model family, model
   ID and call limits. This ADR fixes the endpoint, the client and the reply mechanism.

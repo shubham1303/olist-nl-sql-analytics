@@ -28,7 +28,7 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 |---|---|---|
 | Database | Aurora Serverless v2 PG + RDS Data API (AWS); Docker Postgres + psycopg (local); `QueryExecutor` abstraction with shared contract tests; `aws_s3` bulk load; auto-pause + `/status` warm-up | [0001](docs/adr/0001-database-platform.md) |
 | Security | DB role `analytics_reader` is the boundary (SELECT on `analytics` only, read-only, statement timeout); least-privilege IAM (one cluster, one secret); sqlglot is layer two with useful rejection messages | [0002](docs/adr/0002-database-is-the-security-boundary.md) |
-| LLM | Bedrock `us-east-1`, Claude Sonnet 5 via `us.anthropic.claude-sonnet-5` (verified ACTIVE); model ID only in config; ≤ 2 model calls per question; results never sent back to the model | [0003](docs/adr/0003-llm-provider-and-model.md) |
+| LLM | Bedrock `us-east-1`, Claude Sonnet 4.6 via `us.anthropic.claude-sonnet-4-6` (Sonnet 5 unavailable to the account; later config swap + re-baseline); model ID only in config; ≤ 2 model calls per question; results never sent back to the model | [0003](docs/adr/0003-llm-provider-and-model.md), [0019](docs/adr/0019-sonnet-4-6-current-model.md) |
 | Access & cost | Shared access code (hash stored server-side); route throttling; 500-char question cap; 4 KiB body; reserved concurrency; bounded output; $20 budget at 50/80/100% (alert, not cap) | [0004](docs/adr/0004-public-access-and-cost-controls.md) |
 | Schema | Curated `analytics` views over hidden `raw` schema; one `catalog.yaml` generates both prompt context and validator allowlist; geolocation excluded; catalog resolves known terms, otherwise state the assumption and answer | [0005](docs/adr/0005-curated-analytics-schema-and-catalog.md) |
 | Evaluation | 57 questions: 34 dev / 23 held-out (7 human-written); human-verified references; no tuning on held-out; stage metrics reported separately; no fabricated numbers | [0006](docs/adr/0006-evaluation-methodology.md), [0018](docs/adr/0018-human-written-benchmark-items.md) |
@@ -41,7 +41,7 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | Time window | 2017-01..2018-08 recommended for trends/comparisons; never auto-filtered; requested periods preserved with caveat | [0013](docs/adr/0013-recommended-time-window.md) |
 | SQL validation | sqlglot AST, fail-closed, catalog-driven allowlists; joins via relationship key domains; uniqueness-based cardinality; fan-out + bridge-attribution rules; regenerated SQL only | [0014](docs/adr/0014-sql-validation-design.md) |
 | Model-visible set | Five fact views + product attributes; `customers`, `sellers` and product lifetime columns hidden | [0015](docs/adr/0015-model-visible-relations.md) |
-| Bedrock client | `bedrock-runtime` endpoint via `anthropic.AnthropicBedrock` (InvokeModel, Messages body), `us.anthropic.claude-sonnet-5`, forced `submit_answer` tool call (no structured outputs for Sonnet 5 on Bedrock), cached catalog prompt | [0016](docs/adr/0016-bedrock-client-and-structured-output.md) |
+| Bedrock client | `bedrock-runtime` endpoint via `anthropic.AnthropicBedrock` (InvokeModel, Messages body), forced `submit_answer` tool call with thinking disabled (works on 4.6 and on Sonnet 5, which lacks structured outputs on Bedrock), cached catalog prompt | [0016](docs/adr/0016-bedrock-client-and-structured-output.md), [0019](docs/adr/0019-sonnet-4-6-current-model.md) |
 
 ---
 
@@ -81,7 +81,7 @@ olist-nl-sql/
 ├── plan.md
 ├── .github/workflows/ci.yml
 ├── docs/
-│   ├── adr/                    # decisions (0001–0018)
+│   ├── adr/                    # decisions (0001–0019)
 │   ├── architecture.md         # Phase 9
 │   ├── sql-safety.md           # validator guarantees, grain analysis, limitations
 │   ├── nl-to-sql.md            # pipeline flow, prompt, repair, result, failure modes
@@ -217,7 +217,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 - ADR 0017: comparison rules (names/column order ignored, extra columns allowed, percent form for rates, month normalisation, per-item tolerances) and verification pinned to a content hash.
 - 50 items (30 dev / 20 test) across all ADR 0006 areas and difficulties. Snapshots taken on the pinned Kaggle build. Review changed dev-010 (wording), dev-020 (exclude `uncategorized`) and dev-024 ("sold" = revenue orders, 3,053).
 - **All 50 items human-verified** (Shubham More). Test review changed test-008 (label column dropped so boolean or text group labels both match), test-009 ("bought something" → "placed an order", any status as in dev-029) and test-017 ("how much" → "by what percentage"). Ties and near-boundary rows checked for every ranking; `uncategorized` is in no top-k.
-- **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. ADR 0003 still names Sonnet 5; if 4.6 becomes the official model, record that in a new ADR.
+- **Model:** Sonnet 5 is blocked for the account ("not available for this account… contact AWS Sales"; use-case form submitted 2026-10-08, Support case pending). Runs use **`us.anthropic.claude-sonnet-4-6`** via `NLSQL_BEDROCK_MODEL_ID`, no code change. Recorded as the current model in ADR 0019 (2026-10-11).
 - Live fixes from the first runs: the parser keeps `assumptions`/`metrics_used` sent as (possibly malformed) text instead of failing the question; prompt-cache tokens are now recorded.
 - **First dev baseline:** [20261009T082119Z](eval/results/20261009T082119Z_dev_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **29/30 correct**. Miss: dev-012, triaged `wrong_filter_or_time_window` (no revenue-order filter, so NULL-revenue sellers sort first in `ORDER BY DESC`).
 - **Held-out checkpoint:** [20261009T083443Z](eval/results/20261009T083443Z_test_us-anthropic-claude-sonnet-4-6.md), Sonnet 4.6, **19/20 correct**. Miss: test-016, triaged `wrong_filter_or_time_window` (averaged `item_count` over all orders, including the 775 with no items). Not acted on (held-out). The record shows "uncommitted changes" because verification of test.yaml was committed together with the run; the benchmark hash pins the content.

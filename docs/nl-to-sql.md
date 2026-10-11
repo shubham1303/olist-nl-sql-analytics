@@ -22,7 +22,7 @@ Decisions:
 sequenceDiagram
     actor U as User / CLI
     participant P as Pipeline
-    participant M as Bedrock bedrock-runtime (Claude Sonnet 5)
+    participant M as Bedrock bedrock-runtime (Claude Sonnet 4.6)
     participant V as SQL validator
     participant D as PostgreSQL (analytics_reader)
     U->>P: question
@@ -90,10 +90,11 @@ told how the validator works internally.
 
 The request goes to Bedrock's **bedrock-runtime** endpoint (InvokeModel with the
 Anthropic Messages body, via `anthropic.AnthropicBedrock`). The model ID is
-`us.anthropic.claude-sonnet-5`.
+`us.anthropic.claude-sonnet-4-6` (ADR 0019).
 
-JSON-schema structured outputs (`output_config.format`) aren't supported for Claude
-Sonnet 5 on Bedrock. Instead the model answers through **one tool call**,
+The request doesn't use JSON-schema structured outputs (`output_config.format`):
+Sonnet 4.6 has them, but Sonnet 5 on Bedrock doesn't, and the model must stay a config
+swap (ADR 0019). Instead the model answers through **one tool call**,
 `submit_answer`, whose `input_schema` is the schema below:
 - With thinking disabled (the default), the call is forced with `tool_choice`.
 - With adaptive thinking, the prompt asks for the call. A reply without it is a

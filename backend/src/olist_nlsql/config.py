@@ -27,9 +27,9 @@ class ConfigError(ValueError):
 @dataclass(frozen=True, slots=True)
 class Settings:
     aws_region: str = "us-east-1"
-    # bedrock-runtime US geo inference profile (ADR 0016). Sonnet 5 on bedrock-runtime
-    # requires a geo (us./eu./au.) or global. ID; the bare model ID is not accepted.
-    bedrock_model_id: str = "us.anthropic.claude-sonnet-5"
+    # bedrock-runtime US geo inference profile (ADR 0016, 0019). Claude on bedrock-runtime
+    # needs a geo (us./eu./au.) or global. ID; the bare model ID is not accepted.
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"
     # Output cap per model call, thinking included (ADR 0003, 0004).
     llm_max_output_tokens: int = 4096
     llm_effort: Effort = "medium"

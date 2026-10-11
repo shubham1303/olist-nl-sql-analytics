@@ -41,8 +41,8 @@ from `.env` or code.
    aws sts get-caller-identity          # check who you are
    ```
 
-2. The identity needs `bedrock:InvokeModel` for the `us.anthropic.claude-sonnet-5`
-   inference profile and the foundation models it routes to. The application calls the
+2. The identity needs `bedrock:InvokeModel` for the `us.anthropic.claude-sonnet-4-6`
+   inference profile (ADR 0019) and the foundation models it routes to. The application calls the
    **bedrock-runtime** endpoint (ADR 0016). The least-privilege policy is written in
    Phase 7.
 
@@ -66,7 +66,7 @@ from `.env` or code.
    ```sh
    # The control-plane check uses the foundation-model ID (no us./global. prefix):
    aws bedrock get-foundation-model-availability \
-       --model-id anthropic.claude-sonnet-5 --region us-east-1
+       --model-id anthropic.claude-sonnet-4-6 --region us-east-1
    ```
 
    `agreementAvailability.status` must not be `NOT_AVAILABLE`. Until access is granted,
@@ -82,7 +82,7 @@ Model settings are environment variables (defaults in
 | Variable | Default | Meaning |
 |---|---|---|
 | `NLSQL_AWS_REGION` | `us-east-1` | Bedrock region |
-| `NLSQL_BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-5` | bedrock-runtime inference profile (US geo). `global.anthropic.claude-sonnet-5` also works. The bare ID doesn't (ADR 0016). |
+| `NLSQL_BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | bedrock-runtime inference profile (US geo). `global.anthropic.claude-sonnet-4-6` also works. The bare ID doesn't (ADR 0016). Sonnet 5 (`us.anthropic.claude-sonnet-5`) is a later swap (ADR 0019). |
 | `NLSQL_LLM_EFFORT` | `medium` | `low` / `medium` / `high` / `xhigh` / `max` |
 | `NLSQL_LLM_THINKING` | `disabled` | `disabled` forces the `submit_answer` tool call. `adaptive` enables thinking and asks for the call instead. |
 | `NLSQL_LLM_MAX_OUTPUT_TOKENS` | `4096` | Output cap per call, thinking included |

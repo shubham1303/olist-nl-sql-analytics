@@ -203,6 +203,12 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
   - The UI and API share one origin: CloudFront serves the site and forwards `/api/*` to API Gateway, so there's no CORS and no API URL in the bundle.
   - The deploy workflow updates code only (UI to S3 plus a CloudFront invalidation, Lambda code) through a GitHub OIDC role scoped to those actions. Terraform stays a reviewed manual apply.
   - Repository variables are set by `gh`; the one secret (the deployed access code) is set by the owner.
+- **Built and applied (2026-10-13):**
+  - **Hosting:** CloudFront with a private site bucket behind origin access control, `/api/*` forwarded to API Gateway (a function strips the prefix) and security headers. Created in about 3 min.
+  - **Deploy role:** GitHub OIDC provider plus a role trusted only for `main`, allowed only to deploy code.
+  - **Workflows:** `deploy.yml` runs after CI on `main` (build, upload, update the Lambda, invalidate, smoke test); `eval.yml` runs a manual dev smoke through the public `/api`.
+  - Terraform ignores the Lambda's code after the first apply.
+  - The 6 repository variables are set. Guide: [docs/deployment.md](docs/deployment.md#hosting-and-continuous-deployment-phase-8).
 
 ### Phase 7 (done, 2026-10-13; CI green, PR #5)
 

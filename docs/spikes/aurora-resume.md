@@ -41,7 +41,8 @@ This matches AWS's documented typical resume of about 15 s.
   `/status` Lambda can call once, map that error to `{"db": "resuming"}`, and return
   well inside 30 s.
   - The UI polls every few seconds. It should expect "Starting analytics database…" for
-    about 15–20 s, and up to about 30 s+ after a long pause (see below).
+    about 15–20 s, and up to about 80–90 s after a pause of more than a day (see
+    below).
 - **`/query` must not wait for a resume inside the request.** About 20 s of resume, plus
   one or two Bedrock calls (about 2–6 s), plus the query would leave little margin
   under 30 s, and none after a deep sleep.
@@ -50,12 +51,54 @@ This matches AWS's documented typical resume of about 15 s.
 - The executor needs one more error kind ("resuming") so this case is not reported as a
   generic execution failure.
 
-## Not yet measured
+## Deep sleep (1 trial, paused 25.3 h)
 
-**Deep sleep.** AWS says an instance paused for more than 24 hours can take 30 s or
-more to resume. That trial needs the cluster to stay paused for about a day; maintenance
-can wake it early. The cluster was left paused for this; storage and the secret cost
-cents per day.
+AWS says an instance paused for more than 24 hours can go into a deeper sleep and take
+30 s or more to resume. The cluster was left paused to measure this.
+
+- Date: 2026-10-12. First call at 23:55 UTC.
+- Paused for 25.3 h. CloudWatch `ServerlessDatabaseCapacity` (1-minute maximum) was
+  last above 0 at 22:38 UTC on 2026-10-11 and stayed at 0 every hour after that, so
+  maintenance did not wake it.
+- Same script and query as above. Raw data is batch 3 in the jsonl. Its
+  `paused_for_min` (2.6) counts from the fresh 0-ACU minute the script waits for, not
+  from the real start of the pause; `paused_hours` holds the real figure.
+
+| Measure | Deep sleep | Short pause (above) |
+|---|---|---|
+| First call → outcome | 6.92 s, `DatabaseResumingException` | 2.9–4.2 s, same error |
+| First call → first success (incl. 1 s waits) | **81.9 s** | 16.1–20.3 s |
+| Calls until success | 19 (18 errors, then ok) | 4–5 |
+| Longest single call | 6.92 s (the first) | 6.1 s |
+| Calls after the first | 2.0–5.8 s each, all fail fast | 2.0–6.1 s |
+| Warm call right after | 0.07 s | 0.03–0.18 s |
+
+Resume took about 4.5 times as long as after a short pause, and well past AWS's
+"30 s or more". This is one trial; the next deep sleep could be faster or slower.
+
+### What it means for the design
+
+- **No single call comes close to 30 s.** Every call during the 82 s resume returned
+  in under 7 s. The Data API fails fast in deep sleep too; it never blocks until the
+  database is up. So one `/status` call per request stays well inside API Gateway's
+  30 s integration timeout.
+- **The `/status` poll-and-wait UX still holds.** Only the wait is longer. After a short
+  pause the UI shows "Starting analytics database…" for about 15–20 s. After a day or
+  more idle, which is the normal case for a portfolio demo, expect about 80–90 s.
+  - The UI must not give up early. Keep polling for at least 2–3 minutes before showing
+    an error.
+  - Over 80 s, the starting message should say that the first start after a quiet day
+    can take a minute or two, and show elapsed time, so the page does not look stuck.
+  - Polling every 3–5 s means about 15–25 `/status` calls per cold start. That is
+    fine within the route throttling, but the throttle must allow it.
+- **`/query` design is unchanged.** It must not wait for a resume inside the request.
+  It returns the typed "resuming" error, and the UI goes back to the `/status` flow.
+- The cold start is the first thing a visitor sees. If 80–90 s proves too long in
+  practice, the option is to keep minimum capacity above 0 during expected demo times.
+  That costs money; it is a later decision, not part of Phase 6.
+
+The spike cluster `olist-resume-spike` was deleted after this trial (instance, cluster
+and RDS-managed secret).
 
 ## Cost
 

@@ -17,7 +17,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, Protocol, get_args
 
 from olist_nlsql.config import Settings
 from olist_nlsql.db import QueryExecutor
@@ -29,6 +29,9 @@ from olist_nlsql.llm.fake import FakeModelClient, reply_json
 from olist_nlsql.llm.prompts import PROMPT_VERSION
 from olist_nlsql.pipeline import NlSqlPipeline, PipelineResult
 from olist_nlsql.sqlsafety import SqlValidator
+
+if TYPE_CHECKING:
+    from olist_nlsql.evaluation.remote import RemoteApi
 
 RESULTS_DIR = REPO_ROOT / "eval" / "results"
 RECORD_VERSION = 2  # 2 adds per-attempt SQL and validation codes
@@ -190,9 +193,13 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
 
 
-def evaluate_item(
-    item: BenchmarkItem, pipeline: NlSqlPipeline, validator: SqlValidator
-) -> ItemOutcome:
+class Asker(Protocol):
+    """What the runner needs from a pipeline: the in-process one or a deployed API."""
+
+    def ask(self, question: str) -> PipelineResult: ...
+
+
+def evaluate_item(item: BenchmarkItem, pipeline: Asker, validator: SqlValidator) -> ItemOutcome:
     result = pipeline.ask(item.question)
     correct: bool | None = None
     reason = ""
@@ -265,8 +272,9 @@ def reference_model(item: BenchmarkItem) -> ModelClient:
 def run(
     benchmark: Benchmark,
     *,
-    model_for: Callable[[BenchmarkItem], ModelClient],
-    executor: QueryExecutor,
+    model_for: Callable[[BenchmarkItem], ModelClient] | None = None,
+    executor: QueryExecutor | None = None,
+    remote: "RemoteApi | None" = None,
     settings: Settings,
     checkpoint: str | None = None,
     ids: Sequence[str] = (),
@@ -282,10 +290,16 @@ def run(
     outcomes = []
     model_ids: set[str] = set()
     for item in items:
-        model = model_for(item)
-        model_ids.add(model.model_id)
-        pipeline = NlSqlPipeline(model, validator, executor, settings)
-        outcome = evaluate_item(item, pipeline, validator)
+        if remote is not None:
+            outcome = evaluate_item(item, remote, validator)
+            model_ids.add(remote.model_id)
+        else:
+            if model_for is None or executor is None:
+                raise ValueError("run needs model_for and executor, or remote")
+            model = model_for(item)
+            model_ids.add(model.model_id)
+            pipeline = NlSqlPipeline(model, validator, executor, settings)
+            outcome = evaluate_item(item, pipeline, validator)
         outcomes.append(outcome)
         if progress:
             progress(outcome)
@@ -302,13 +316,17 @@ def run(
         git_commit=commit,
         git_dirty=dirty,
         model_id=model_id,
-        model_settings={
-            "region": settings.aws_region,
-            "effort": settings.llm_effort,
-            "thinking": settings.llm_thinking,
-            "max_output_tokens": settings.llm_max_output_tokens,
-            "timeout_seconds": settings.llm_timeout_seconds,
-        },
+        model_settings=(
+            {"via_api": remote.base}  # the deployed function's own settings apply
+            if remote is not None
+            else {
+                "region": settings.aws_region,
+                "effort": settings.llm_effort,
+                "thinking": settings.llm_thinking,
+                "max_output_tokens": settings.llm_max_output_tokens,
+                "timeout_seconds": settings.llm_timeout_seconds,
+            }
+        ),
         prompt_version=PROMPT_VERSION,
         benchmark_hash=benchmark.file_hash(),
         checkpoint=checkpoint.strip() if checkpoint else None,

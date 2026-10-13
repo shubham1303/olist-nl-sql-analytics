@@ -12,6 +12,7 @@ compare --before A.json... --after B.json...   mean/min comparison of repeated d
 """
 
 import argparse
+import os
 import sys
 from collections.abc import Callable
 from datetime import date
@@ -131,6 +132,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     r.add_argument("--results-dir", type=Path, default=runner.RESULTS_DIR)
     r.add_argument("--repeat", type=int, default=1, help="run N times, one record each (dev only)")
+    r.add_argument(
+        "--api-url",
+        help="ask a deployed API instead of the local pipeline (code from NLSQL_API_ACCESS_CODE)",
+    )
     r.add_argument("ids", nargs="*", help="only these items (default: all)")
     rep = sub.add_parser("report", help="write the markdown report for a run record")
     rep.add_argument("record", type=Path)
@@ -223,6 +228,17 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
     if args.repeat > 1 and benchmark.split == "test":
         raise ValueError("held-out checkpoints are single runs; --repeat is for dev")
     settings = load_settings()
+    remote = None
+    if args.api_url and args.fake_reference:
+        raise ValueError("--fake-reference and --api-url don't go together")
+    if args.api_url:
+        from olist_nlsql.evaluation.remote import RemoteApi
+
+        code = os.environ.get("NLSQL_API_ACCESS_CODE", "")
+        if not code:
+            raise ValueError("set NLSQL_API_ACCESS_CODE to the deployed API's access code")
+        remote = RemoteApi(args.api_url, code)
+        remote.wait_until_ready()
     model_for: Callable[[bm.BenchmarkItem], ModelClient]
     if args.fake_reference:
         model_for = runner.reference_model
@@ -234,12 +250,13 @@ def _split_command(args: argparse.Namespace, benchmark: bm.Benchmark) -> int:
         def model_for(_item: bm.BenchmarkItem) -> ModelClient:
             return client
 
-    executor = _executor()
+    run_executor = None if remote else _executor()
     for n in range(1, args.repeat + 1):
         record = runner.run(
             benchmark,
             model_for=model_for,
-            executor=executor,
+            executor=run_executor,
+            remote=remote,
             settings=settings,
             checkpoint=args.checkpoint,
             ids=args.ids,

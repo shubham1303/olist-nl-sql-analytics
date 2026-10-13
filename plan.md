@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–7 done; Phase 8 (hosting + CD) in progress.** Deployed on AWS (us-east-1). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phases 0–8 done; Phase 9 (polish) next.** Live at https://dunn64bzakzr8.cloudfront.net (access code required); every merge to `main` deploys. On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-10-13
 
 ---
@@ -79,7 +79,7 @@ AWS Budgets: $20/month, notifications at 50/80/100% + forecast
 olist-nl-sql/
 ├── README.md
 ├── plan.md
-├── .github/workflows/ci.yml
+├── .github/workflows/         # ci.yml; deploy.yml (after CI on main, OIDC); eval.yml (manual)
 ├── docs/
 │   ├── adr/                    # decisions (0001–0019)
 │   ├── architecture.md         # Phase 9
@@ -88,7 +88,9 @@ olist-nl-sql/
 │   ├── local-development.md    # setup, AWS auth for Bedrock, tests
 │   ├── data-model.md           # raw → analytics design, grains, data-quality caveats
 │   ├── metrics.md              # metric definitions and the revenue decision
-│   └── local-database.md       # Docker Postgres commands, roles, build steps
+│   ├── local-database.md       # Docker Postgres commands, roles, build steps
+│   ├── deployment.md           # AWS deploy, hosting, CD, cost, cold starts
+│   └── spikes/                 # measured experiments (Aurora resume)
 ├── data/raw/                   # downloaded CSVs — git-ignored (CC BY-NC-SA 4.0)
 ├── docker-compose.yml          # local Postgres 16, loopback only
 ├── .env.example                # credentials template (.env is git-ignored)
@@ -99,13 +101,14 @@ olist-nl-sql/
 │   │   ├── pipeline.py         # orchestration: prompt → model → validator → repair → DB (done)
 │   │   ├── cli.py              # python -m olist_nlsql ask/prompt (done)
 │   │   ├── catalog/            # catalog.yaml + strict loader (done)
-│   │   ├── dbsetup/            # dataset download/verify, build CLI, sql/010–040 (done)
+│   │   ├── dbsetup/            # dataset download/verify, local build, aws-build via Data API (done)
 │   │   ├── sqlsafety/          # validator, grain analysis, policy from catalog (done)
-│   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
+│   │   ├── db/                 # QueryExecutor protocol, PostgresExecutor, DataApiExecutor (done)
 │   │   ├── llm/                # client protocol, bedrock, fake, prompts, output schema (done)
-│   │   ├── api/                # handlers + local_app (done); lambda_handler (Phase 7)
+│   │   ├── api/                # handlers, local_app, lambda_handler, EMF metrics (done)
 │   │   └── evaluation/         # benchmark, runner, compare, report, CLI (done)
-│   └── tests/unit | integration | live
+│   ├── scripts/build_lambda.py # reproducible arm64 Lambda zip
+│   └── tests/unit | integration | live (+ executor_contract.py shared by both executors)
 ├── eval/                       # Phases 4–5
 │   ├── benchmark/dev.yaml      # 34 questions — used for tuning
 │   ├── benchmark/test.yaml     # 23 questions — held-out, never tuned on
@@ -115,7 +118,8 @@ olist-nl-sql/
 ├── frontend/                   # Vite + React + TS
 │   └── src/                    # app, components, charts/selectChart.ts (done)
 └── infra/
-    └── main/                   # single Terraform root, files split by concern
+    ├── bootstrap/              # the Terraform state bucket (local state)
+    └── main/                   # the stack, files split by concern (S3 backend)
 ```
 
 ---
@@ -134,7 +138,7 @@ A phase is done only when its milestone is met and CI is green.
 | 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
 | 6 ✅ | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | **Met:** local demo against Docker Postgres + Bedrock Sonnet 4.6 (bar, line and KPI answers, unanswerable question, simulated resume, phone width); 505 backend unit tests incl. 24 API tests, 36 frontend tests (PR #4) |
 | 7 ✅ | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | **Met (2026-10-13):** executor contract 10/10 on Aurora through the Data API; eval smoke subset through the deployed API 8/8; cold start from a paused cluster: 503 `database_resuming`, then `/status` ready after 26.9 s, then answered |
-| 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
+| 8 ✅ | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | **Met (2026-10-13):** Deploy #2 ran on its own after merging PR #7 (CI, then OIDC deploy, then smoke test); the public URL serves the app; no AWS keys are stored in GitHub |
 | 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
 
 **Stretch (after Phase 9, each needs justification):** follow-up questions, query cache,
@@ -197,7 +201,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 8 (in progress, started 2026-10-13)
+### Phase 8 (done, 2026-10-13)
 
 - **Decisions:**
   - The UI and API share one origin: CloudFront serves the site and forwards `/api/*` to API Gateway, so there's no CORS and no API URL in the bundle.
@@ -219,7 +223,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
   - In the browser, the deployed access code was accepted. Requests stay on the same origin (`/api/status`, `/api/query`).
   - Top 5 categories: bar chart in 3.9 s, matching the local values. Orders per month in 2018: line chart, with the keyboard tooltip working under the CSP.
   - No console errors.
-- **Still to show:** a fully automatic deploy on merge. Merging PR #7 triggers it.
+- **Automatic deploy on merge:** after PR #7 merged, CI ran on `main` and Deploy #2 started on its own and passed. That meets the milestone: a merge to `main` deploys, the public URL works, and no long-lived AWS keys are used.
 
 ### Phase 7 (done, 2026-10-13; CI green, PR #5)
 

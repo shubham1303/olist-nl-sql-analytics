@@ -199,11 +199,13 @@ uv run python -m olist_nlsql ask "Revenue by category" \
 Local setup, including AWS authentication, is in
 [local-development.md](local-development.md).
 
-## Smoke-test notes (Phase 3)
+## Smoke-test notes
 
 | Date | Result |
 |---|---|
 | 2026-09-24 | **Not run.** Bedrock refused every call: *"anthropic.claude-sonnet-5 is not available for this account"* (`agreementAvailability: NOT_AVAILABLE` for all Anthropic models). `pytest -m live` skips cleanly with that reason. Rerun after model access is granted. |
+| 2026-10-11 | **5/5 answered** on `us.anthropic.claude-sonnet-4-6` (ADR 0019), Bedrock → validator → local Postgres. The same with no model environment variable, on the new config default. |
+| 2026-10-13 | **Deployed:** the same pipeline in Lambda against Aurora through the Data API. The first question was answered in 2.3 s, and an 8-question dev smoke subset through the API scored 8/8. |
 
 The 5 smoke questions are in
 [test_bedrock_smoke.py](../backend/tests/live/test_bedrock_smoke.py). They check the
@@ -218,16 +220,18 @@ Measured on the development laptop against Docker PostgreSQL:
 | Prompt build (after a one-time catalog load of about 50 ms) | < 0.1 ms |
 | Validation (49 accepted corpus queries) | median 2.8 ms, 95th percentile 12 ms |
 | Execution (6 representative queries) | 90–380 ms |
-| Model call | not measured (no Bedrock access yet) |
+| Model call (Sonnet 4.6, about 6k cached prompt tokens) | about 1.6–3 s per call |
 
 ## Limitations
 
-- **No live model output yet**, so there's no evidence about how the prompt performs,
-  which validator errors the model triggers, or how often repair works.
+- How the prompt performs, which validator errors the model triggers and how often
+  repair works is measured by the benchmark ([eval/CHANGELOG.md](../eval/CHANGELOG.md)),
+  not here.
 - The pipeline is single-turn with no clarification step (ADR 0005). Ambiguity is
   handled through stated assumptions.
 - `metrics_used` is the model's own claim and isn't cross-checked against the SQL.
-- The 60 s model timeout times two calls exceeds the API Gateway 30 s budget, so
-  Phase 7 must tighten timeouts or effort.
+- The 60 s default model timeout, times two calls, exceeds API Gateway's 30 s. The
+  Lambda sets `NLSQL_LLM_TIMEOUT_SECONDS=12`, so two calls plus the query fit in its
+  29 s timeout.
 - The prompt is English and tuned to this catalog. There's no retrieval, which isn't
   needed at about 6k tokens.

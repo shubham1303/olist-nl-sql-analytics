@@ -15,6 +15,11 @@ interface Props {
 }
 
 const THICKNESS = 24 // max bar thickness (px)
+const CHAR_PX = 7 // approximate width of one 12px label character
+
+function shorten(label: string, maxChars: number): string {
+  return label.length <= maxChars ? label : `${label.slice(0, maxChars - 1)}…`
+}
 const RADIUS = 4 // rounded data end; square at the baseline
 
 /** A bar from `base` to `end` along the value axis, rounded only at the data end. */
@@ -49,16 +54,21 @@ export function BarChart({ bars, valueName, horizontal }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const [active, setActive] = useState<number | null>(null)
   const values = bars.map((b) => b.value ?? 0)
-  const ticks = niceTicks(Math.min(0, ...values), Math.max(0, ...values))
-  const lo = ticks[0]!
-  const hi = ticks[ticks.length - 1]!
 
   const longest = Math.max(...bars.map((b) => b.label.length))
-  const labelSpace = horizontal ? Math.min(220, 12 + longest * 7) : 0
+  // category labels get at most ~40% of the width; longer ones are shortened with "…"
+  const labelSpace = horizontal ? Math.min(220, 12 + longest * CHAR_PX, Math.floor(width * 0.4)) : 0
+  const maxChars = Math.max(4, Math.floor((labelSpace - 12) / CHAR_PX))
   const margin = horizontal
-    ? { top: 8, right: 72, bottom: 24, left: labelSpace }
+    ? { top: 8, right: 64, bottom: 24, left: labelSpace }
     : { top: 20, right: 12, bottom: 64, left: 56 }
   const plotW = width - margin.left - margin.right
+  const plotH0 = 300 - margin.top - margin.bottom
+  // about one tick per 80 px of value axis, so tick labels never run together
+  const tickCount = Math.max(2, Math.min(5, Math.floor((horizontal ? plotW : plotH0) / 80)))
+  const ticks = niceTicks(Math.min(0, ...values), Math.max(0, ...values), tickCount)
+  const lo = ticks[0]!
+  const hi = ticks[ticks.length - 1]!
   const band = horizontal ? 32 : plotW / bars.length
   const height = horizontal ? margin.top + margin.bottom + band * bars.length : 300
   const plotH = height - margin.top - margin.bottom
@@ -118,7 +128,7 @@ export function BarChart({ bars, valueName, horizontal }: Props) {
               )}
               {horizontal ? (
                 <text className="category" x={margin.left - 8} y={cross + thick / 2 + 4} textAnchor="end">
-                  {bar.label}
+                  {shorten(bar.label, maxChars)}
                 </text>
               ) : (
                 <text
@@ -154,8 +164,9 @@ export function BarChart({ bars, valueName, horizontal }: Props) {
       </svg>
       {activeBar && active !== null && (
         <Tooltip
-          x={horizontal ? Math.min(width - 160, scale(activeBar.value ?? 0) + 12) : crossOf(active)}
-          y={horizontal ? crossOf(active) - 8 : margin.top}
+          // below the hovered bar (horizontal) or beside it (vertical), clear of its value label
+          x={horizontal ? margin.left + 8 : Math.min(width - 160, crossOf(active) + thick + 8)}
+          y={horizontal ? crossOf(active) + thick + 6 : margin.top}
           title={activeBar.label}
           rows={[
             {

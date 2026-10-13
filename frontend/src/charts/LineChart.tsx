@@ -57,6 +57,9 @@ function LinePanel({ x, series, colors, legend, height = 300 }: PanelProps) {
   const px = (i: number) => margin.left + (x.length === 1 ? plotW / 2 : (i / (x.length - 1)) * plotW)
   const py = (v: number) => margin.top + plotH - ((v - lo) / (hi - lo)) * plotH
   const labelStep = Math.max(1, Math.ceil(x.length / Math.max(2, Math.floor(plotW / 90))))
+  // every labelStep-th month plus the last one, unless that would crowd the last label
+  const showLabel = (i: number) =>
+    i === x.length - 1 || (i % labelStep === 0 && x.length - 1 - i >= labelStep * 0.75)
 
   const path = (values: (number | null)[]) => {
     let d = ''
@@ -109,7 +112,7 @@ function LinePanel({ x, series, colors, legend, height = 300 }: PanelProps) {
           </g>
         ))}
         {x.map((label, i) =>
-          i % labelStep === 0 || i === x.length - 1 ? (
+          showLabel(i) ? (
             <text key={label} className="tick" x={px(i)} y={height - 8} textAnchor="middle">
               {formatTimeLabel(label)}
             </text>

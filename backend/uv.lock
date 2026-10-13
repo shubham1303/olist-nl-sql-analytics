@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 
 [[package]]
@@ -107,6 +107,24 @@ wheels = [
 ]
 
 [[package]]
+name = "boto3-stubs"
+version = "1.43.112"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "botocore-stubs" },
+    { name = "types-s3transfer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ee/61/e26db2a58a2a4db379e839d28657f339b358e58db7fc969567475e5b645a/boto3_stubs-1.43.112.tar.gz", hash = "sha256:19f9ffedaa5d1cef2edc0c46b513242b859c732c897757e49616cf7b2dc76323", size = 105936, upload-time = "2026-10-12T20:19:25.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6f/2b/6818b13acceedba8076f7c4c77ecaea4f333a2448828f686a115d1cfb48d/boto3_stubs-1.43.112-py3-none-any.whl", hash = "sha256:b9d4753a3c4c10004a92bb135a02181b055e38130a964f1bfa17120bb664ec1b", size = 72201, upload-time = "2026-10-12T20:19:21.408Z" },
+]
+
+[package.optional-dependencies]
+rds-data = [
+    { name = "mypy-boto3-rds-data" },
+]
+
+[[package]]
 name = "botocore"
 version = "1.43.101"
 source = { registry = "https://pypi.org/simple" }
@@ -118,6 +136,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/12/12/e90cc51bd65ecdcd0eedcd522d3c9f102b1d2c601f39f1f1c256695d63a3/botocore-1.43.101.tar.gz", hash = "sha256:3bc67fb55046e1e05ce5f2bd0171f37bef1cf54161786ef04ff338614d98169e", size = 16202504, upload-time = "2026-09-23T19:23:24.49Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/0d/6679253333d6ba74b8ad7077560687096629255ef526e106bb3accceffcc/botocore-1.43.101-py3-none-any.whl", hash = "sha256:f380237ffecc3f887265cd09c4d7e9c8e8dd9ba6162af83b1fc9e5d24622e461", size = 15897867, upload-time = "2026-09-23T19:23:21.643Z" },
+]
+
+[[package]]
+name = "botocore-stubs"
+version = "1.43.112"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/b4/11461e9eefc1a58acd87788f57fef2703fdadee4abdf39bdf890af029b99/botocore_stubs-1.43.112.tar.gz", hash = "sha256:eda6315f1976939aff1b9bb8bedd88ecc8bae9a1551a62b23050e876a4237dd1", size = 42914, upload-time = "2026-10-13T01:58:00.541Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/20/35b81efaa2a4818f67c585201bc912436d9cecb8a23385b66a2044aac188/botocore_stubs-1.43.112-py3-none-any.whl", hash = "sha256:a86d150dc924e072ede90d42415a6da81edc232330ea7ac4972e53fb3174f762", size = 67249, upload-time = "2026-10-13T01:57:57.419Z" },
 ]
 
 [[package]]
@@ -281,6 +308,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mypy-boto3-rds-data"
+version = "1.43.37"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/fc/f1b986ccec57dcacaf04b849ceecd004b1a855a3f091696a0c9213fe614f/mypy_boto3_rds_data-1.43.37.tar.gz", hash = "sha256:d7591fb812253e3acbe8d7417a8fb6df16107cbf5e7aef82ec67e2d9aa2b3432", size = 16682, upload-time = "2026-06-29T21:57:07.843Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/f9/f960c8b695ef05783dd392174aacc69945be7f25012a1dfab31e0c206c1c/mypy_boto3_rds_data-1.43.37-py3-none-any.whl", hash = "sha256:c9b27cd4fd47c51b243da76fa0e92681f218969f6e6af7861953a63335969fbc", size = 20806, upload-time = "2026-06-29T21:57:06.105Z" },
+]
+
+[[package]]
 name = "mypy-extensions"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -295,6 +331,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic", extra = ["bedrock"] },
+    { name = "boto3" },
     { name = "pyyaml" },
     { name = "sqlglot" },
 ]
@@ -306,6 +343,7 @@ postgres = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "boto3-stubs", extra = ["rds-data"] },
     { name = "mypy" },
     { name = "olist-nlsql", extra = ["postgres"] },
     { name = "pytest" },
@@ -316,6 +354,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", extras = ["bedrock"], specifier = ">=1.0" },
+    { name = "boto3", specifier = ">=1.35" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlglot", specifier = ">=30.19,<31" },
@@ -324,6 +363,7 @@ provides-extras = ["postgres"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "boto3-stubs", extras = ["rds-data"], specifier = ">=1.43.112" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "olist-nlsql", extras = ["postgres"] },
     { name = "pytest", specifier = ">=8.3" },
@@ -569,6 +609,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/90/6e/abec85b9013db5b934b0280a6dd104904d84f7bcbaab2e2f3def87ac7463/types_pyyaml-6.0.12.20260906.tar.gz", hash = "sha256:f59c1cc05010b833d2d72287bbaa72610106b28d42d89a907313117faba85212", size = 18649, upload-time = "2026-09-06T06:35:35.362Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/15/c0/fc0644b7ddcfb969e95845837143cb5173ddd6e06ee4ba5fc493cd9329b7/types_pyyaml-6.0.12.20260906-py3-none-any.whl", hash = "sha256:bca893ff0d51df5c9053137d5d0e6ccd36e939a196356f1d5c16372422f5137b", size = 21282, upload-time = "2026-09-06T06:35:34.372Z" },
+]
+
+[[package]]
+name = "types-s3transfer"
+version = "0.19.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/29/4df7e8eccfdaac9308e06ae94271eb0e5d2324cbe6df241363c44b70e08c/types_s3transfer-0.19.2.tar.gz", hash = "sha256:2a78a806c09b11fc6d59756402ade26b49b93a85ac6f209a39e2498211c6a41b", size = 13766, upload-time = "2026-10-13T01:42:25.222Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/02/3fa02c57a65f8721030247866d28c1a6601d7826297e83059c50b7d6ce7e/types_s3transfer-0.19.2-py3-none-any.whl", hash = "sha256:f1167b9a082a49fc55f12700dcbd3a8b540b9e6fec4e1d782ff44f3eef0bdbff", size = 19473, upload-time = "2026-10-13T01:42:23.813Z" },
 ]
 
 [[package]]

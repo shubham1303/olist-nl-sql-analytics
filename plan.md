@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–6 done; Phase 7 (AWS deployment) in progress.** On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phases 0–7 done** (Phase 7 merges with its PR; deployed on AWS, us-east-1). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-10-13
 
 ---
@@ -133,7 +133,7 @@ A phase is done only when its milestone is met and CI is green.
 | 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
 | 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
 | 6 ✅ | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | **Met:** local demo against Docker Postgres + Bedrock Sonnet 4.6 (bar, line and KPI answers, unanswerable question, simulated resume, phone width); 505 backend unit tests incl. 24 API tests, 36 frontend tests (PR #4) |
-| 7 | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
+| 7 ✅ | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | **Met (2026-10-13):** executor contract 10/10 on Aurora through the Data API; eval smoke subset through the deployed API 8/8; cold start from a paused cluster: 503 `database_resuming`, then `/status` ready after 26.9 s, then answered |
 | 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
 | 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
 
@@ -197,13 +197,36 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 7 (in progress, started 2026-10-13)
+### Phase 7 (milestone met, 2026-10-13; done when CI is green)
 
 - **Entry condition met:** root access keys deactivated (see §6).
 - **Decisions:**
   - No reserved concurrency. The account's Lambda limit is 10, and AWS always keeps 10 unreserved, so API Gateway throttling plus the account cap are the ceiling (ADR 0004 amendment).
   - Auto-pause after 30 min idle.
   - Budget and alarm email kept in git-ignored `terraform.tfvars`.
+- **Code:**
+  - `DataApiExecutor`; the executor contract moved to `tests/executor_contract.py` and runs against both executors.
+  - `lambda_handler` with EMF metrics (namespace `OlistNlSql`).
+  - `scripts/build_lambda.py`: reproducible arm64 zip, 21.7 MB.
+  - `dbsetup aws-build` / `aws-views`: aws_s3 imports through the Data API, with row counts verified.
+  - `evaluation run --api-url` for runs against the deployed API.
+- **Terraform:**
+  - `infra/bootstrap`: the state bucket.
+  - `infra/main`, 45 resources: VPC with private subnets and no NAT; Aurora Serverless v2 PG 16.15 at 0–2 ACU; secrets; data bucket; Lambda; HTTP API with throttling; alarms; dashboard; $20 budget.
+  - CI validates both roots.
+  - Guide: [docs/deployment.md](docs/deployment.md).
+- **Applied 2026-10-13:**
+  - Aurora writer created in 6.5 min.
+  - `aws-build` loaded all 9 tables at their pinned counts, including `geolocation` at 1,000,163 rows.
+- **Milestone checks:**
+  - **Executor contract on Aurora:** 10/10.
+  - **First requests:** `/status` 6.5 s (Lambda cold start), then 0.44 s; a wrong code gets 401; the first question was answered correctly in 2.3 s.
+  - **Eval smoke subset through the API:** 8/8 (dev-002, 006, 007, 008, 012, 013, 021, 034), in [20261013T073332Z](eval/results/20261013T073332Z_dev_us-anthropic-claude-sonnet-4-6.md).
+  - **Cold start after the 30-min auto-pause:**
+    - `/query` returned 503 `database_resuming` in 13.4 s. That includes a Lambda cold start and one Bedrock call made before the database was reached.
+    - `/status` polled `resuming` at 18 s and 23.5 s; no call took more than 4.6 s. It answered `ready` at 26.9 s.
+    - The question asked again was answered correctly in 4.1 s.
+- **Follow-up:** a `/query` that meets a paused database spends one Bedrock call before finding out. The UI checks `/status` first, so this only happens when the database pauses mid-session. Probing the database before the model call would save that call. This is a Phase 9 candidate, not a correctness issue.
 
 ### Phase 6 (done, 2026-10-13)
 

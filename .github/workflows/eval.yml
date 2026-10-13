@@ -1,0 +1,48 @@
+name: Eval smoke (deployed)
+
+# Manual: asks dev questions through the public app's /api and scores them (Phase 8).
+# Dev split only; held-out checkpoints are never run from CI (ADR 0006). Needs no AWS
+# credentials, only the access code (secret NLSQL_API_ACCESS_CODE). Records are uploaded
+# as an artifact; commit them by hand if the run should be part of the record.
+
+on:
+  workflow_dispatch:
+    inputs:
+      items:
+        description: Dev item ids, space-separated
+        default: dev-002 dev-006 dev-007 dev-008 dev-012 dev-013 dev-021 dev-034
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        run: uv sync --locked
+      - name: Run
+        env:
+          NLSQL_API_ACCESS_CODE: ${{ secrets.NLSQL_API_ACCESS_CODE }}
+          API_URL: ${{ vars.SITE_URL }}/api
+          ITEMS: ${{ inputs.items }}
+        run: |
+          # inputs are data: only dev item ids get through
+          [[ "$ITEMS" =~ ^(dev-[0-9]{3})( dev-[0-9]{3})*$ ]] || { echo "items must be dev-NNN ids"; exit 1; }
+          read -ra ids <<< "$ITEMS"
+          uv run python -m olist_nlsql.evaluation run --split dev --api-url "$API_URL" \
+            --results-dir ../eval-results "${ids[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-smoke
+          path: eval-results/

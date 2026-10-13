@@ -98,3 +98,43 @@ After 30 min idle the cluster pauses. The first `/status` or `/query` starts a r
 
 Resume takes about 20 s after a short pause and about 80–90 s after a day
 ([spikes/aurora-resume.md](spikes/aurora-resume.md)).
+
+## Hosting and continuous deployment (Phase 8)
+
+The public app is CloudFront (`terraform output -raw site_url`) in front of:
+
+- **the private site bucket**, read through origin access control;
+- **the HTTP API** under `/api/*`, with no caching and all viewer headers except `Host`.
+  A CloudFront function strips the `/api` prefix, so the browser only ever talks to one
+  origin: no CORS, and no API URL in the bundle.
+
+Every response carries security headers (CSP, HSTS, `nosniff`, `X-Frame-Options:
+DENY`).
+
+**Deploys** (`.github/workflows/deploy.yml`) run after CI passes on a push to `main`,
+or by hand from the Actions tab:
+
+1. Build the UI and the Lambda zip from the commit CI tested.
+2. Assume the deploy role through GitHub OIDC. No AWS keys are stored in GitHub.
+3. Upload the UI. Hashed assets are cached for a year; `index.html` is always
+   revalidated.
+4. Update the Lambda code and wait for it to become active.
+5. Invalidate `/index.html`.
+6. Smoke test: the site returns 200, and `/api/status` without a code returns 401.
+
+The deploy role (`infra/main/github.tf`) trusts only this repository's `main` branch.
+It can write the site bucket, invalidate the distribution and update the function's
+code, and nothing else. Terraform ignores the function's code after the first apply,
+so the two don't fight. Infrastructure changes stay a reviewed, manual `terraform
+apply`.
+
+**Repository settings** the workflows read:
+
+| Kind | Name | Value |
+|---|---|---|
+| Variables | `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN`, `SITE_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, `LAMBDA_FUNCTION_NAME`, `SITE_URL` | `terraform output -json github_variables` |
+| Secret | `NLSQL_API_ACCESS_CODE` | The deployed access code (used only by `eval.yml`) |
+
+**Eval smoke** (`.github/workflows/eval.yml`, manual) asks dev questions through the
+public `/api` and uploads the run records as an artifact. It runs on the dev split only
+and needs no AWS credentials.

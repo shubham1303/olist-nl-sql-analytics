@@ -95,5 +95,11 @@ resource "aws_lambda_function" "api" {
     }
   }
 
+  # After the first apply the deploy workflow owns the code (UpdateFunctionCode from
+  # GitHub Actions); Terraform keeps managing the configuration around it.
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+  }
+
   depends_on = [aws_iam_role_policy.api_function]
 }

@@ -1,0 +1,93 @@
+name: Deploy
+
+# Deploys code (not infrastructure) after CI passes on main: the UI to S3 behind
+# CloudFront, and the Lambda package. AWS credentials come from GitHub OIDC; the role
+# (infra/main/github.tf) trusts only this repository's main branch and can only do
+# these steps. Infrastructure changes are a reviewed, manual `terraform apply`.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for the deploy role
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Only after a successful CI run for a push to main (never for a PR's CI run).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      SITE_BUCKET: ${{ vars.SITE_BUCKET }}
+      DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME }}
+      SITE_URL: ${{ vars.SITE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # the commit CI tested, not whatever main is now
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build UI
+        working-directory: frontend
+        env:
+          VITE_API_BASE: /api # same origin through CloudFront
+        run: |
+          npm ci
+          npm run build
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Build Lambda package
+        working-directory: backend
+        run: uv run python scripts/build_lambda.py
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload UI
+        run: |
+          # hashed assets: cache for a year; index.html: always revalidate
+          aws s3 sync frontend/dist/ "s3://$SITE_BUCKET/" --delete \
+            --exclude index.html --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp frontend/dist/index.html "s3://$SITE_BUCKET/index.html" \
+            --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+
+      - name: Update Lambda code
+        run: |
+          aws lambda update-function-code --function-name "$FUNCTION_NAME" \
+            --zip-file fileb://backend/build/lambda.zip --query CodeSha256 --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION_NAME"
+
+      - name: Invalidate index.html
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/" "/index.html" --query Invalidation.Id --output text
+
+      - name: Smoke test
+        run: |
+          # the site loads, and /api reaches the function (no code: 401 from the API)
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL/")" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$SITE_URL/api/status")" = 401
+          echo "deployed: $SITE_URL"

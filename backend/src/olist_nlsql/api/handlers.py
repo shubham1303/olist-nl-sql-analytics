@@ -62,13 +62,23 @@ class Response:
     headers: dict[str, str] = field(
         default_factory=lambda: {"content-type": "application/json", "cache-control": "no-store"}
     )
+    # For metrics and logs only, never sent: route, outcome, model calls, timings.
+    observation: dict[str, Any] = field(default_factory=dict)
 
     def json(self) -> bytes:
         return json.dumps(self.body, ensure_ascii=False).encode("utf-8")
 
 
-def _error(status: int, code: str, message: str) -> Response:
-    return Response(status, {"error": {"code": code, "message": message}})
+def _error(status: int, code: str, message: str, route: str = "other") -> Response:
+    return Response(
+        status,
+        {"error": {"code": code, "message": message}},
+        observation={"route": route, "outcome": code},
+    )
+
+
+def _status(http: int, db: str) -> Response:
+    return Response(http, {"db": db}, observation={"route": "status", "outcome": db})
 
 
 def public_result(result: PipelineResult) -> dict[str, Any]:
@@ -93,14 +103,16 @@ class Api:
 
     def handle(self, request: Request) -> Response:
         routes = {"/status": ("GET", self._status), "/query": ("POST", self._query)}
-        route = routes.get(request.path.rstrip("/") or "/")
+        path = request.path.rstrip("/") or "/"
+        route = routes.get(path)
         if route is None:
             return _error(404, "NOT_FOUND", f"No route {request.path}.")
         method, handler = route
+        name = path.lstrip("/")
         if request.method.upper() != method:
-            return _error(405, "METHOD_NOT_ALLOWED", f"{request.path} only accepts {method}.")
+            return _error(405, "METHOD_NOT_ALLOWED", f"{request.path} only accepts {method}.", name)
         if not self._authorised(request):
-            return _error(401, "UNAUTHORIZED", "Missing or wrong access code.")
+            return _error(401, "UNAUTHORIZED", "Missing or wrong access code.", name)
         return handler(request)
 
     def _authorised(self, request: Request) -> bool:
@@ -113,10 +125,10 @@ class Api:
         try:
             self.executor.execute("SELECT 1", max_rows=1)
         except DatabaseResumingError:
-            return Response(200, {"db": "resuming"})
+            return _status(200, "resuming")
         except QueryExecutionError:
-            return Response(503, {"db": "unavailable"})
-        return Response(200, {"db": "ready"})
+            return _status(503, "unavailable")
+        return _status(200, "ready")
 
     def _query(self, request: Request) -> Response:
         if len(request.body) > self.settings.max_request_bytes:
@@ -124,20 +136,37 @@ class Api:
                 413,
                 "REQUEST_TOO_LARGE",
                 f"The request body is limited to {self.settings.max_request_bytes} bytes.",
+                "query",
             )
         content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if content_type != "application/json":
-            return _error(415, "UNSUPPORTED_MEDIA_TYPE", "Send the request as application/json.")
+            return _error(
+                415, "UNSUPPORTED_MEDIA_TYPE", "Send the request as application/json.", "query"
+            )
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
-            return _error(400, "INVALID_JSON", "The request body is not valid JSON.")
+            return _error(400, "INVALID_JSON", "The request body is not valid JSON.", "query")
         if not isinstance(payload, dict) or set(payload) != {"question"}:
             return _error(
-                400, "INVALID_REQUEST", 'The body must be a JSON object with only "question".'
+                400,
+                "INVALID_REQUEST",
+                'The body must be a JSON object with only "question".',
+                "query",
             )
         question = payload["question"]
         if not isinstance(question, str):
-            return _error(400, "INVALID_REQUEST", '"question" must be a string.')
+            return _error(400, "INVALID_REQUEST", '"question" must be a string.', "query")
         result = self.pipeline.ask(question)
-        return Response(_HTTP_STATUS[result.status], public_result(result))
+        observation = {
+            "route": "query",
+            "outcome": result.status,
+            "model_calls": len(result.attempts),
+            "repair_attempted": result.repair_attempted,
+            "total_ms": result.timings.total_ms,
+            "model_ms": round(sum(a.model_ms for a in result.attempts), 2),
+            "execution_ms": result.timings.execution_ms,
+            "input_tokens": sum(a.input_tokens + a.cache_read_tokens for a in result.attempts),
+            "output_tokens": sum(a.output_tokens for a in result.attempts),
+        }
+        return Response(_HTTP_STATUS[result.status], public_result(result), observation=observation)

@@ -28,3 +28,15 @@ cost and non-determinism for a problem that the shape of the result already answ
 - Chart choice is instant, free and unit-testable with fixtures.
 - Some results will get a plainer chart than a human would choose. We'll add rules
   when real results show a gap.
+
+## Refinements (2026-10-13, Phase 6)
+
+Two gaps found in dev results, handled inside the same rules:
+
+- **Months as text.** Models often format months with `TO_CHAR(..., 'YYYY-MM')`, which
+  arrives as text. Rule 2 treats a text column as time when every value is a
+  `YYYY-MM` or `YYYY-MM-DD` label.
+- **Series on different scales.** Rule 2 allows up to three numeric series, but revenue
+  and order counts on one axis would flatten one of them. When series differ more
+  than 10× in scale the line chart becomes small multiples, one panel per series. It
+  never uses a second axis.

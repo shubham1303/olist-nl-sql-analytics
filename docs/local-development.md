@@ -103,6 +103,41 @@ uv run python -m olist_nlsql prompt --stats
 See [nl-to-sql.md](nl-to-sql.md) for the flow, the result fields and the failure
 modes.
 
+## Running the app (local API + UI)
+
+1. Choose an access code (at least 12 characters) and add its hash to `.env`:
+
+   ```sh
+   cd backend
+   uv run python -m olist_nlsql.api hash-code     # prints NLSQL_ACCESS_CODE_SHA256=...
+   ```
+
+   Only the hash is stored (ADR 0004). The API refuses to start without it.
+2. Start the database (`docker compose up -d`), then the API on `127.0.0.1:8000`, with
+   your AWS profile for Bedrock:
+
+   ```sh
+   uv run python -m olist_nlsql.api serve
+   uv run python -m olist_nlsql.api serve --fake-sql "SELECT SUM(revenue) AS revenue FROM orders"  # no Bedrock
+   uv run python -m olist_nlsql.api serve --simulate-resume 20   # practise the "Starting…" state
+   ```
+
+3. Start the UI and open http://localhost:5173. Vite proxies `/api/*` to the API.
+
+   ```sh
+   cd frontend
+   npm run dev
+   ```
+
+| Route | Does |
+|---|---|
+| `GET /status` | `SELECT 1`; `{"db": "ready"}`, `{"db": "resuming"}` (never waits) or 503 `unavailable` |
+| `POST /query` | `{"question": "..."}` (JSON, ≤ 4 KiB, no other fields) → the pipeline result without per-attempt token counts. 200 for answered, unanswerable, rejected and execution failures; 400 invalid question; 502 model failure; 503 database resuming; 500 validator error |
+
+Both need the `X-Access-Code` header; a missing or wrong code is 401. The UI polls
+`/status` every 3 s while the database resumes and gives up after 3 minutes
+([aurora-resume.md](spikes/aurora-resume.md)).
+
 ## Tests
 
 | Command | Needs | What it covers |

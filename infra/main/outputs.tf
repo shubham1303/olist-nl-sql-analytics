@@ -24,3 +24,22 @@ output "env" {
     NLSQL_DB_NAME=${var.database_name}
   EOT
 }
+
+output "site_url" {
+  description = "The public app (CloudFront)."
+  value       = "https://${aws_cloudfront_distribution.site.domain_name}"
+}
+
+# Repository variables for .github/workflows (not secret, but account-specific):
+#   terraform output -json github_variables | ... gh variable set
+output "github_variables" {
+  description = "Values for the deploy and eval workflows' repository variables."
+  value = {
+    AWS_REGION                 = var.aws_region
+    AWS_DEPLOY_ROLE_ARN        = aws_iam_role.github_deploy.arn
+    SITE_BUCKET                = aws_s3_bucket.site.bucket
+    CLOUDFRONT_DISTRIBUTION_ID = aws_cloudfront_distribution.site.id
+    LAMBDA_FUNCTION_NAME       = aws_lambda_function.api.function_name
+    SITE_URL                   = "https://${aws_cloudfront_distribution.site.domain_name}"
+  }
+}

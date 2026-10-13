@@ -103,7 +103,7 @@ olist-nl-sql/
 │   │   ├── sqlsafety/          # validator, grain analysis, policy from catalog (done)
 │   │   ├── db/                 # QueryExecutor protocol + PostgresExecutor (done); data_api (Phase 7)
 │   │   ├── llm/                # client protocol, bedrock, fake, prompts, output schema (done)
-│   │   ├── api/                # lambda_handler, local_app (dev only)     (Phase 6 / 7)
+│   │   ├── api/                # handlers + local_app (done); lambda_handler (Phase 7)
 │   │   └── evaluation/         # benchmark, runner, compare, report, CLI (done)
 │   └── tests/unit | integration | live
 ├── eval/                       # Phases 4–5
@@ -113,7 +113,7 @@ olist-nl-sql/
 │   ├── triage/                 # human failure categories per run
 │   └── CHANGELOG.md            # accuracy changes with before/after dev runs
 ├── frontend/                   # Vite + React + TS
-│   └── src/charts/selectChart.ts   # Phase 6
+│   └── src/                    # app, components, charts/selectChart.ts (done)
 └── infra/
     └── main/                   # single Terraform root, files split by concern
 ```
@@ -200,6 +200,29 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ### Phase 6 (started 2026-10-11)
 
 - **Aurora resume spike** ([docs/spikes/aurora-resume.md](docs/spikes/aurora-resume.md)): on a paused cluster, a Data API call fails fast with `DatabaseResumingException` (2.9–4.2 s, never more than 6.1 s), and queries succeed 16–20 s after the first call (5 trials, mean 18.2 s). The `/status` → "resuming" → poll design fits the 30 s API Gateway limit; `/query` must return a typed "resuming" error instead of waiting. **Deep sleep (2026-10-12, 1 trial, paused 25.3 h):** first success 81.9 s after the first call (19 calls); every call still failed fast (longest 6.9 s), so the design holds, but the UI must expect "Starting analytics database…" for about 80–90 s after a quiet day and keep polling for at least 2–3 minutes. The throwaway cluster `olist-resume-spike` and its secret were deleted on 2026-10-12.
+- **API** (`olist_nlsql.api`, shared with the Phase 7 Lambda):
+  - `GET /status` runs `SELECT 1` and answers ready or resuming without waiting.
+  - `POST /query` takes a JSON body of at most 4 KiB with only `question`.
+  - The access code is checked as a SHA-256 hash in constant time.
+  - Pipeline status maps to HTTP status. A new `DatabaseResumingError` gives pipeline status `database_resuming`, sent as 503.
+  - `local_app` runs it on loopback with the standard library (`serve`, `--fake-sql`, `--simulate-resume`, `hash-code`).
+- **UI:**
+  - Access-code gate, using `sessionStorage`.
+  - A "Starting analytics database…" state that polls every 3 s, shows elapsed time, adds a long-start message after 30 s and gives up after 3 min. A question that hits a resuming database is asked again once it is ready.
+  - Question box with a 500-character limit and dev-split examples.
+  - Interpretation, metrics, assumptions, SQL panel, truncation notice, and empty and failure states.
+- **Charts (ADR 0007, `selectChart.ts`):** KPI tile, line chart, bar chart (horizontal for long labels), otherwise a table, which is always one click away. Hand-drawn SVG, with hover and keyboard tooltips. Two refinements to the ADR rules:
+  - `YYYY-MM` text from `TO_CHAR` counts as time.
+  - Series that differ more than 10× in scale become small multiples instead of a second axis.
+- **Tests:** 24 API unit tests, including a real HTTP round trip, and 36 frontend tests covering chart rules, formatting, charts and app flows with mocked `fetch` and fake timers.
+- **Local demo (2026-10-13), Docker Postgres + Bedrock Sonnet 4.6, in the in-app browser:**
+  - Access code accepted; a wrong code gets 401.
+  - Top 5 categories by revenue: horizontal bar chart in 4.0 s, values match the dev reference.
+  - Orders per month in 2018: line chart, with the incomplete-month assumption shown.
+  - Late delivery rate: KPI tile, 6.77%.
+  - Names and emails of customers: shown as unanswerable.
+  - `--simulate-resume 20`: the starting screen, then ready.
+  - 375 px phone width: no horizontal scroll. Bar labels and ticks were fixed after this check.
 
 ### Phase 5 (done, 2026-10-11)
 

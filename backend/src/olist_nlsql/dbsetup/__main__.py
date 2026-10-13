@@ -1,6 +1,12 @@
-"""CLI: ``python -m olist_nlsql.dbsetup {download,verify,build,views}``."""
+"""CLI: ``python -m olist_nlsql.dbsetup {download,verify,build,views,aws-build,aws-views}``.
+
+The aws-* commands build the Aurora database through the RDS Data API (aws_build.py).
+They read the cluster, secret and bucket names from NLSQL_* variables (terraform output)
+and use the normal AWS credential chain (AWS_PROFILE).
+"""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -20,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("verify", help="check the CSVs against pinned SHA-256 hashes")
     sub.add_parser("build", help="rebuild roles, raw schema + data, analytics views, grants")
     sub.add_parser("views", help="rebuild only the analytics views and grants")
+    sub.add_parser("aws-build", help="upload CSVs and rebuild the Aurora database (Data API)")
+    sub.add_parser("aws-views", help="rebuild only the Aurora analytics views and grants")
     args = parser.parse_args(argv)
 
     try:
@@ -38,7 +46,15 @@ def main(argv: list[str] | None = None) -> int:
             build.build(LocalDb.from_env(), args.data_dir)
         elif args.command == "views":
             build.rebuild_views(LocalDb.from_env())
-    except (dataset.DatasetError, RuntimeError) as exc:
+        elif args.command in ("aws-build", "aws-views"):
+            from olist_nlsql.dbsetup.aws_build import builder_from_env
+
+            builder = builder_from_env(os.environ)
+            if args.command == "aws-build":
+                builder.build(args.data_dir)
+            else:
+                builder.views()
+    except (dataset.DatasetError, RuntimeError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     return 0

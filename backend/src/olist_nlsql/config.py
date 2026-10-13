@@ -5,6 +5,7 @@ This module is the only place defaults live, including the Bedrock model ID
 """
 
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal, cast
@@ -43,6 +44,8 @@ class Settings:
     # SQL validator limits (docs/sql-safety.md).
     max_sql_chars: int = 8000
     max_joins: int = 6
+    # SHA-256 (hex) of the shared access code (ADR 0004). None: the API refuses to start.
+    access_code_sha256: str | None = None
 
 
 def _read_str(env: Mapping[str, str], name: str, default: str) -> str:
@@ -76,6 +79,16 @@ def _read_choice(env: Mapping[str, str], name: str, default: str, choices: tuple
     return value
 
 
+def _read_sha256(env: Mapping[str, str], name: str) -> str | None:
+    raw = env.get(ENV_PREFIX + name)
+    if raw is None or not raw.strip():
+        return None
+    value = raw.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", value):
+        raise ConfigError(f"{ENV_PREFIX}{name} must be a 64-character hex SHA-256 digest")
+    return value
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     """Build ``Settings`` from ``env`` (defaults to ``os.environ``)."""
     env = os.environ if env is None else env
@@ -98,4 +111,5 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         ),
         max_sql_chars=_read_int(env, "MAX_SQL_CHARS", defaults.max_sql_chars),
         max_joins=_read_int(env, "MAX_JOINS", defaults.max_joins),
+        access_code_sha256=_read_sha256(env, "ACCESS_CODE_SHA256"),
     )

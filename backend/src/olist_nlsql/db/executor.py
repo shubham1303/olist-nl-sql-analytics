@@ -32,6 +32,15 @@ class QueryTimeoutError(QueryExecutionError):
     """The statement exceeded the database statement timeout."""
 
 
+class DatabaseResumingError(QueryExecutionError):
+    """The database is paused and starting up (Aurora auto-pause); retry in a few seconds.
+
+    Raised by the Data API executor on ``DatabaseResumingException``. Local Postgres never
+    pauses. See docs/spikes/aurora-resume.md: resuming takes about 20 s, or 80-90 s after
+    a day idle, and each call fails fast in the meantime.
+    """
+
+
 class QueryExecutor(Protocol):
     def execute(self, sql: str, *, max_rows: int) -> QueryResult:
         """Run one read-only statement and return at most ``max_rows`` rows."""

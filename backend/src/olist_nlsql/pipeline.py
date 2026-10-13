@@ -15,7 +15,13 @@ from typing import Literal
 
 from olist_nlsql.catalog import Catalog, load_catalog
 from olist_nlsql.config import Settings
-from olist_nlsql.db import ColumnInfo, QueryExecutionError, QueryExecutor, QueryTimeoutError
+from olist_nlsql.db import (
+    ColumnInfo,
+    DatabaseResumingError,
+    QueryExecutionError,
+    QueryExecutor,
+    QueryTimeoutError,
+)
 from olist_nlsql.llm.client import ModelClient, ModelError, ModelReply, ModelRequest
 from olist_nlsql.llm.output import OUTPUT_SCHEMA, Generation, OutputParseError, parse_generation
 from olist_nlsql.llm.prompts import (
@@ -37,6 +43,7 @@ Status = Literal[
     "rejected",  # SQL still failed validation after the allowed repair
     "validator_error",  # the validator itself failed (a bug, not a user mistake)
     "execution_failed",  # the database rejected or timed out on validated SQL
+    "database_resuming",  # the database is paused and starting up; retry shortly
 ]
 Stage = Literal["input", "generation", "parsing", "validation", "validator_internal", "execution"]
 AttemptKind = Literal["generation", "repair"]
@@ -258,6 +265,16 @@ class _Run:
         started = time.perf_counter()
         try:
             data = self.p.executor.execute(validation.sql, max_rows=self.p.settings.max_result_rows)
+        except DatabaseResumingError:
+            self.execution_ms = _ms(started)
+            return self._fail(
+                "database_resuming",
+                "execution",
+                "DATABASE_RESUMING",
+                "The analytics database is starting up. Try again in a few seconds.",
+                generation,
+                validation,
+            )
         except QueryTimeoutError:
             self.execution_ms = _ms(started)
             return self._fail(

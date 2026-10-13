@@ -145,7 +145,7 @@ def categorise(
     if result.status in ("rejected", "validator_error"):
         code = result.error.code if result.error else "unknown"
         return "validator_rejection", code
-    if result.status == "execution_failed":
+    if result.status in ("execution_failed", "database_resuming"):
         return "execution_error", result.error.code if result.error else "unknown"
     if correct is None:
         return "no_reference", "no reference result snapshot"

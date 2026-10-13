@@ -6,10 +6,14 @@
 # upload the built UI, invalidate the CloudFront cache, update the Lambda code.
 # Infrastructure changes stay a reviewed, manual `terraform apply`.
 
-variable "github_repository" {
-  description = "owner/name of the repository allowed to deploy."
+# GitHub's OIDC subject for this repository. It uses the immutable format, owner and
+# repository names plus their numeric IDs, so a renamed or re-created repository with the
+# same name can't deploy. Read it with:
+#   gh api repos/OWNER/REPO/actions/oidc/customization/sub   (sub_claim_prefix)
+variable "github_oidc_sub_prefix" {
+  description = "sub_claim_prefix of the repository allowed to deploy (immutable subject format)."
   type        = string
-  default     = "shubham1303/olist-nl-sql-analytics"
+  default     = "repo:shubham1303@23360808/olist-nl-sql-analytics@1384310424"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -29,7 +33,7 @@ resource "aws_iam_role" "github_deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "${var.github_oidc_sub_prefix}:ref:refs/heads/main"
         }
       }
     }]

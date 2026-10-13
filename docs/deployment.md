@@ -123,6 +123,11 @@ or by hand from the Actions tab:
 6. Smoke test: the site returns 200, and `/api/status` without a code returns 401.
 
 The deploy role (`infra/main/github.tf`) trusts only this repository's `main` branch.
+This repository uses GitHub's immutable OIDC subject, which includes the owner and
+repository IDs (`repo:shubham1303@23360808/olist-nl-sql-analytics@1384310424:ref:refs/heads/main`).
+A renamed or re-created repository with the same name can't deploy. If you fork this
+project, set `github_oidc_sub_prefix` to your repository's `sub_claim_prefix` (from
+`gh api repos/OWNER/REPO/actions/oidc/customization/sub`).
 It can write the site bucket, invalidate the distribution and update the function's
 code, and nothing else. Terraform ignores the function's code after the first apply,
 so the two don't fight. Infrastructure changes stay a reviewed, manual `terraform

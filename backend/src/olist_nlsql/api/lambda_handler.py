@@ -24,6 +24,9 @@ from olist_nlsql.pipeline import NlSqlPipeline
 from olist_nlsql.sqlsafety import SqlValidator
 
 logger = logging.getLogger(__name__)
+# Lambda's root logger is at WARNING; let the pipeline's one JSON line per question
+# through. EMF metric lines go straight to stdout and don't depend on this.
+logging.getLogger("olist_nlsql").setLevel(logging.INFO)
 
 _api: Api | None = None
 

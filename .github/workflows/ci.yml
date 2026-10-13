@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra/main
+        working-directory: infra
     steps:
       - uses: actions/checkout@v5
       - uses: hashicorp/setup-terraform@v3
@@ -119,7 +119,9 @@ jobs:
           terraform_version: "~1.14"
       - name: Format
         run: terraform fmt -check -recursive
-      - name: Init (no backend)
-        run: terraform init -backend=false -input=false
-      - name: Validate
-        run: terraform validate
+      - name: Validate (bootstrap, main; no backend)
+        run: |
+          for root in bootstrap main; do
+            terraform -chdir="$root" init -backend=false -input=false
+            terraform -chdir="$root" validate
+          done

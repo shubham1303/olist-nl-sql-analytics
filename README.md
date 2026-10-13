@@ -1,40 +1,79 @@
 # olist-nl-sql
 
-Ask questions about the [Olist e-commerce dataset][olist] in plain English and get
-back the answer as a table, along with the SQL that produced it and any assumptions
-the model made along the way.
+Ask questions about the [Olist e-commerce dataset][olist] in plain English. You get
+back the answer as a chart and a table, along with the SQL that produced it and any
+assumptions the model made along the way.
+
+**Live demo:** <https://dunn64bzakzr8.cloudfront.net>. It's behind an access code, so
+ask me for one. The database pauses when nobody is using it, so the first question
+after a quiet day waits about a minute while it wakes up.
 
 The interesting part of this project (for me anyway) isn't calling an LLM, it's
-making it safe to run whatever SQL the LLM hands back. So most of the code is the
-validator and the plumbing around it.
+making it safe to run whatever SQL the LLM hands back, and measuring honestly how
+often it's right. So most of the code is the validator, the evaluation harness, and
+the plumbing around them.
 
 ## How it works
 
 1. The question goes to Claude Sonnet 4.6 on Bedrock, together with a system prompt
    generated from a catalog of the curated views (tables, columns, metric definitions).
 2. The model has to reply by calling a `submit_answer` tool with the SQL, its
-   interpretation of the question, and assumptions. The reply gets parsed strictly
+   interpretation of the question, and assumptions. The reply gets parsed strictly,
    because Bedrock doesn't enforce the schema for this model.
 3. The SQL goes through a sqlglot-based validator: single SELECT only, allowed views
-   and columns only, no fan-out joins that would double count revenue, a row limit, etc.
-   Details in [docs/sql-safety.md](docs/sql-safety.md).
+   and columns only, no fan-out joins that would double count revenue, a row limit,
+   and so on. Details in [docs/sql-safety.md](docs/sql-safety.md).
 4. If the validator rejects it for a fixable reason, the model gets exactly one more
    try with the error code.
-5. The validator's regenerated SQL (never the model's original text) runs against
-   Postgres as a read-only role that can only see the analytics views.
+5. The validator's regenerated SQL (never the model's original text) runs as a
+   read-only role that can only see the analytics views.
+6. The browser picks a chart from the shape of the result (a KPI tile, line or bar),
+   with no LLM involved, and the table is always one click away.
 
 The model never sees actual rows from the database, and it's never called more
 than twice per question.
 
+## Architecture
+
+```
+Browser ── CloudFront ─┬─ /        → S3 (the React app, private bucket)
+                       └─ /api/*   → API Gateway (throttled) → Lambda (Python 3.13)
+                                                                ├─ Bedrock: Claude Sonnet 4.6
+                                                                └─ RDS Data API → Aurora Serverless v2
+                                                                   (PostgreSQL, private subnets, scales to 0)
+```
+
+- **The database role is the security boundary.** The Lambda can only call the Data
+  API as `analytics_reader` (read-only, analytics views only, 10 s statement timeout).
+  The validator is the second layer. The Lambda's IAM role allows exactly that cluster,
+  that secret and one Bedrock model.
+- **No VPC Lambda and no NAT.** The Lambda reaches the database through the Data API,
+  and Aurora reads its CSVs through a free S3 gateway endpoint.
+- **Scale to zero.** Aurora pauses after 30 idle minutes. `/status` answers
+  "resuming" straight away, and the UI polls it, because a resume takes 20–90 s and
+  API Gateway gives up after 30 s.
+  [This was measured before the UI was built](docs/spikes/aurora-resume.md).
+- **Deploys with no stored keys.** Merging to `main` runs CI, then a deploy workflow
+  that gets short-lived AWS credentials through GitHub OIDC. Its role can only upload
+  the site, invalidate the cache and update the Lambda code. Infrastructure is
+  Terraform, applied by hand after review.
+- **Cost control.** API throttling, per-request limits, a $20 budget alert and alarms.
+  Idle, it should cost about $2 a month. That's an estimate from list prices;
+  measured costs come in Phase 9.
+
+The reasoning behind most decisions is written up as ADRs in
+[docs/adr](docs/adr/README.md).
+
 ## Where it's at
 
-Phases 0-5 of the [plan](plan.md) are done. The pipeline runs end to end against
-Claude Sonnet 4.6 on Bedrock, and the [eval harness](eval/README.md) has 57 questions
-(34 dev, 23 held out), each with a reference answer I checked by hand.
+Phases 0–8 of the [plan](plan.md) are done. It runs on AWS, and every merge to `main`
+deploys itself. The [eval harness](eval/README.md) has 57 questions (34 dev, 23 held
+out), each with a reference answer I checked by hand.
 
 Results on Sonnet 4.6:
 
-- **Dev: 34/34**, the same in three repeat runs, with no repairs needed.
+- **Dev: 34/34**, the same in three repeat runs, with no repairs needed. Through the
+  deployed API, an 8-question smoke subset also scores 8/8.
 - **Held out: 20/23.** The 20 drafted questions scored 19/20, but the 3 I wrote
   myself scored only 1/3. So the drafted questions on their own made it look more
   accurate than it is. I only run the held-out set at the end of a phase and never
@@ -44,16 +83,12 @@ The benchmark is small (one held-out question is worth about 4 points), so I quo
 item counts rather than percentages. What changed between runs and why is in
 [eval/CHANGELOG.md](eval/CHANGELOG.md).
 
-Next is Phase 6: a local API and a React UI with automatic charts. I've already
-measured how long a paused Aurora Serverless cluster takes to come back (16-20 s),
-since that decides how the UI handles a cold database. After that comes deploying to
-AWS (Lambda + Aurora Serverless). The reasoning behind most decisions is written up
-as ADRs in [docs/adr](docs/adr/README.md).
+Next is Phase 9, polish: a diagram and write-ups, measured costs, a demo GIF, and a
+few UX fixes that came out of the deployment.
 
 ## Running it locally
 
-You need [uv](https://docs.astral.sh/uv/), Docker, and Node 24 if you want to touch
-the frontend.
+You need [uv](https://docs.astral.sh/uv/), Docker, and Node 24.
 
 ```sh
 cp .env.example .env          # set the db passwords
@@ -64,7 +99,7 @@ uv run python -m olist_nlsql.dbsetup download   # pulls the kaggle zip, checks s
 uv run python -m olist_nlsql.dbsetup build
 ```
 
-Then ask something:
+Then ask something from the command line:
 
 ```sh
 # real model (needs AWS creds + Bedrock access, see docs/local-development.md)
@@ -74,24 +109,39 @@ uv run python -m olist_nlsql ask "What was merchandise revenue in 2017?"
 uv run python -m olist_nlsql ask "How many orders?" --fake-sql "SELECT COUNT(*) FROM orders"
 ```
 
-`--json` gives the full result, `--show-prompt` prints what gets sent to the model.
-AWS credentials come from your normal AWS profile/SSO, not from `.env`.
+Or run the app (API on 127.0.0.1:8000, UI on http://localhost:5173):
+
+```sh
+uv run python -m olist_nlsql.api hash-code    # pick an access code; add the printed line to .env
+uv run python -m olist_nlsql.api serve        # add --fake-sql "..." to skip Bedrock
+cd ../frontend && npm ci && npm run dev
+```
+
+AWS credentials come from your normal AWS profile or SSO, not from `.env`. Deploying
+your own copy is in [docs/deployment.md](docs/deployment.md).
 
 ## Tests
 
 ```sh
 uv run pytest                  # unit tests, no db or aws needed
 uv run pytest -m integration   # needs the docker db
-uv run pytest -m live -s       # hits bedrock for real, never runs in CI
+uv run pytest -m live -s       # real Bedrock / Aurora, never runs in CI
 uv run ruff check . && uv run mypy
+cd ../frontend && npm test && npm run lint && npm run typecheck
 ```
 
 ## Repo layout
 
-- `backend/` - the Python package (`olist_nlsql`): catalog, db setup, validator, llm client, pipeline, CLI
-- `frontend/` - Vite + React scaffold, nothing real in it yet
-- `infra/main/` - Terraform, only providers/variables so far
-- `docs/` - design notes and ADRs
+- `backend/`: the Python package (`olist_nlsql`): catalog, db setup (local and
+  Aurora), validator, LLM client, pipeline, API (local server + Lambda handler),
+  evaluation, CLI
+- `frontend/`: Vite + React + TypeScript app, with hand-drawn SVG charts chosen by
+  `selectChart.ts`
+- `infra/`: Terraform. `bootstrap/` holds the state bucket; `main/` holds the network,
+  Aurora, Lambda, API, CloudFront, OIDC deploy role and alarms
+- `eval/`: the benchmark, run records, triage and the accuracy changelog
+- `docs/`: design notes, ADRs, spikes, the deployment guide
+- `.github/workflows/`: CI, deploy (after CI on `main`), and a manual eval smoke run
 
 ## Data
 

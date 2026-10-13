@@ -43,3 +43,8 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Claude Code: personal project guide and local settings, never published (public repo)
+CLAUDE.md
+CLAUDE.local.md
+.claude/

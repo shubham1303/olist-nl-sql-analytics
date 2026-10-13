@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+alert_email = "you@example.com"
+
+# python -m olist_nlsql.api hash-code   (only the hash goes to AWS)
+access_code_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+# Phase 8 adds the CloudFront origin here.
+# cors_allow_origins = ["http://localhost:5173"]

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "anthropic[bedrock]>=1.0",
+    "boto3>=1.35",
     "pyyaml>=6.0",
     "sqlglot>=30.19,<31",
 ]
@@ -23,6 +24,7 @@ dev = [
     "pytest>=8.3",
     "ruff>=0.8",
     "types-pyyaml>=6.0",
+    "boto3-stubs[rds-data]>=1.43.112",
 ]
 
 [build-system]

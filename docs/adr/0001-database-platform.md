@@ -39,3 +39,15 @@ networking (NAT, VPC endpoints, RDS Proxy).
 - Data API limits apply: a 1 MiB response cap and its own type mapping. Row and column
   limits keep responses well under the cap, and the contract tests catch type drift.
 - The two executors can diverge. The contract suite is the guard.
+
+## Amendment (2026-10-13): no resume retries inside a request
+
+The Aurora resume spike ([docs/spikes/aurora-resume.md](../spikes/aurora-resume.md))
+measured about 20 s to resume after a short pause and about 82 s after a day paused.
+Each Data API call fails fast with `DatabaseResumingException` in the meantime.
+Retrying inside a request would use up API Gateway's 30 s limit.
+
+So the Data API executor doesn't retry. It raises `DatabaseResumingError`, `/query`
+answers 503 `database_resuming`, and the UI waits by polling `/status`, which never
+waits itself. This replaces "retries `DatabaseResumingException` with bounded backoff"
+above.

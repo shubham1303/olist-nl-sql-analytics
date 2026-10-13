@@ -46,6 +46,11 @@ class Settings:
     max_joins: int = 6
     # SHA-256 (hex) of the shared access code (ADR 0004). None: the API refuses to start.
     access_code_sha256: str | None = None
+    # AWS only: the Aurora cluster and analytics_reader secret for the RDS Data API
+    # (ADR 0001). Unset locally, where PostgresExecutor is used.
+    db_cluster_arn: str | None = None
+    db_secret_arn: str | None = None
+    db_name: str = "olist"
 
 
 def _read_str(env: Mapping[str, str], name: str, default: str) -> str:
@@ -77,6 +82,11 @@ def _read_choice(env: Mapping[str, str], name: str, default: str, choices: tuple
     if value not in choices:
         raise ConfigError(f"{ENV_PREFIX}{name} must be one of {', '.join(choices)}, got {value!r}")
     return value
+
+
+def _read_optional(env: Mapping[str, str], name: str) -> str | None:
+    raw = env.get(ENV_PREFIX + name)
+    return raw.strip() if raw and raw.strip() else None
 
 
 def _read_sha256(env: Mapping[str, str], name: str) -> str | None:
@@ -112,4 +122,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         max_sql_chars=_read_int(env, "MAX_SQL_CHARS", defaults.max_sql_chars),
         max_joins=_read_int(env, "MAX_JOINS", defaults.max_joins),
         access_code_sha256=_read_sha256(env, "ACCESS_CODE_SHA256"),
+        db_cluster_arn=_read_optional(env, "DB_CLUSTER_ARN"),
+        db_secret_arn=_read_optional(env, "DB_SECRET_ARN"),
+        db_name=_read_str(env, "DB_NAME", defaults.db_name),
     )

@@ -1,7 +1,7 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–5 done** (Phase 5 merges with PR #2). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). Next: Phase 6 (local API + UI). Decisions locked in [docs/adr/](docs/adr/README.md).
-Last updated: 2026-10-11
+Status: **Phases 0–6 done; Phase 7 (AWS deployment) in progress.** On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
+Last updated: 2026-10-13
 
 ---
 
@@ -132,7 +132,7 @@ A phase is done only when its milestone is met and CI is green.
 | 3 ✅ | **NL→SQL core** | `ModelClient` + Bedrock (bedrock-runtime) client + fake; catalog-generated prompt; pipeline with ≤ 1 repair; CLI `ask`; live smoke test | **Met:** fake model (unit + DB integration, all paths) and live model: `pytest -m live` 5/5 smoke questions answered end to end (Bedrock → validator → local DB) on Sonnet 4.6, 2026-10-11 |
 | 4 ✅ | **Evaluation harness** | 50 drafted items (30 dev / 20 test) → **human verification** of each reference SQL/result; runner; result comparator; failure categoriser; report generator | **Met:** dev baseline 29/30 and held-out checkpoint 19/20 (Sonnet 4.6), both committed with triage |
 | 5 ✅ | **Accuracy iteration (dev only)** | Catalog, view, prompt and few-shot changes driven by dev failure categories; optional second model via config | **Met:** dev 29/30 → 30/30 (prompt v2), [changelog](eval/CHANGELOG.md); held-out checkpoint 20/23 (original 20: 19/20, human-written 3: 1/3) |
-| 6 | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | Full local demo against Docker Postgres + real Bedrock; component and chart-rule tests pass |
+| 6 ✅ | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | **Met:** local demo against Docker Postgres + Bedrock Sonnet 4.6 (bar, line and KPI answers, unanswerable question, simulated resume, phone width); 505 backend unit tests incl. 24 API tests, 36 frontend tests (PR #4) |
 | 7 | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | Deployed API passes executor contract suite and an eval smoke subset; cold-start flow verified from a paused cluster |
 | 8 | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | Merge to main deploys; public URL works; no long-lived AWS keys |
 | 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
@@ -154,7 +154,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 | Data API 1 MiB response cap | Row, column and text-length caps |
 | Unverified benchmark references | Mandatory human verification fields; unverified items excluded from scoring |
 | Lambda packaging from Windows | Build for the Lambda platform explicitly or in CI |
-| **AWS CLI currently uses root credentials** | **Entry condition for Phase 7** (Phase 7 does not start until it is met): create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use; root keys still used by another project, to be deactivated after it moves to its own IAM user.* |
+| **AWS CLI currently uses root credentials** | **Entry condition for Phase 7** (Phase 7 does not start until it is met): create an IAM Identity Center (or IAM) admin user, use a named profile, lock away root keys (delete root access keys if any exist). *2026-10-08: IAM user + `olist-dev` profile in use.* **Met 2026-10-13:** both root access keys deactivated (credential report; a call with the root profile returns `InvalidClientTokenId`). Still to do outside this project: move another project's GitHub Actions deploy and the local `default` profile to IAM, then delete both root keys. |
 | Dataset licence (CC BY-NC-SA 4.0) | Download script; never commit raw data; attribution in README |
 | Model unavailability (happened: Sonnet 5 refused for the account, 2026-10) | Model ID only in config (`NLSQL_BEDROCK_MODEL_ID`, ADR 0019); after any model swap, re-baseline with a live smoke test, a fresh dev run and a held-out checkpoint, and report models separately |
 | Held-out contamination from repeated checkpoints | Checkpoints only at phase ends, each recorded; never change anything because of a test result. **Checkpoints so far: 2** (end of Phase 4, end of Phase 5) |
@@ -197,7 +197,15 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 6 (started 2026-10-11)
+### Phase 7 (in progress, started 2026-10-13)
+
+- **Entry condition met:** root access keys deactivated (see §6).
+- **Decisions:**
+  - No reserved concurrency. The account's Lambda limit is 10, and AWS always keeps 10 unreserved, so API Gateway throttling plus the account cap are the ceiling (ADR 0004 amendment).
+  - Auto-pause after 30 min idle.
+  - Budget and alarm email kept in git-ignored `terraform.tfvars`.
+
+### Phase 6 (done, 2026-10-13)
 
 - **Aurora resume spike** ([docs/spikes/aurora-resume.md](docs/spikes/aurora-resume.md)): on a paused cluster, a Data API call fails fast with `DatabaseResumingException` (2.9–4.2 s, never more than 6.1 s), and queries succeed 16–20 s after the first call (5 trials, mean 18.2 s). The `/status` → "resuming" → poll design fits the 30 s API Gateway limit; `/query` must return a typed "resuming" error instead of waiting. **Deep sleep (2026-10-12, 1 trial, paused 25.3 h):** first success 81.9 s after the first call (19 calls); every call still failed fast (longest 6.9 s), so the design holds, but the UI must expect "Starting analytics database…" for about 80–90 s after a quiet day and keep polling for at least 2–3 minutes. The throwaway cluster `olist-resume-spike` and its secret were deleted on 2026-10-12.
 - **API** (`olist_nlsql.api`, shared with the Phase 7 Lambda):

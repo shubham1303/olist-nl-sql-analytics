@@ -49,3 +49,16 @@ trusted to enforce anything.
   cheap.
 - The access code isn't user identity. There are no per-user quotas in the MVP.
 - Limits are configuration values. We'll tune them from CloudWatch data, not guesses.
+
+## Amendment (2026-10-13): no reserved concurrency yet
+
+This account's Lambda limit is 10 concurrent executions, and AWS always keeps 10
+unreserved, so reserved concurrency can't be set. For now the ceiling on parallel spend
+comes from:
+
+- API Gateway route throttling, kept low (see the Terraform `throttle_*` variables);
+- the account-wide limit of 10, which is shared with the account's other Lambdas;
+- the per-request limits above, especially at most 2 model calls per question.
+
+If the account limit is raised (Service Quotas, "Concurrent executions"), set
+`reserved_concurrency` again. The Terraform variable is kept and defaults to off.

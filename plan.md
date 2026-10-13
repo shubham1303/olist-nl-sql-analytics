@@ -209,6 +209,17 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
   - **Workflows:** `deploy.yml` runs after CI on `main` (build, upload, update the Lambda, invalidate, smoke test); `eval.yml` runs a manual dev smoke through the public `/api`.
   - Terraform ignores the Lambda's code after the first apply.
   - The 6 repository variables are set. Guide: [docs/deployment.md](docs/deployment.md#hosting-and-continuous-deployment-phase-8).
+- **First deploy:**
+  - **Failed at OIDC.** This repository's tokens use GitHub's immutable subject (`repo:OWNER@ID/REPO@ID:...`), not the name-only form. The trust now uses the immutable prefix (PR #7), which also means a renamed or re-created repository with the same name can't deploy.
+  - **The re-run passed**, smoke test included.
+- **Live checks (2026-10-13, https://dunn64bzakzr8.cloudfront.net):**
+  - HTTP redirects to HTTPS. CSP, HSTS, nosniff, `DENY` framing and referrer policy are on every response.
+  - `index.html` is `no-cache`; the hashed JavaScript is cached for a year as immutable. The bundle doesn't contain the API Gateway URL.
+  - `/api/status` gives 401 without the code and `resuming` on a paused database; `/api/admin` gives 404.
+  - In the browser, the deployed access code was accepted. Requests stay on the same origin (`/api/status`, `/api/query`).
+  - Top 5 categories: bar chart in 3.9 s, matching the local values. Orders per month in 2018: line chart, with the keyboard tooltip working under the CSP.
+  - No console errors.
+- **Still to show:** a fully automatic deploy on merge. Merging PR #7 triggers it.
 
 ### Phase 7 (done, 2026-10-13; CI green, PR #5)
 

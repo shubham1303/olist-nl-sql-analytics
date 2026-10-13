@@ -1,6 +1,6 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–7 done** (Phase 7 merges with its PR; deployed on AWS, us-east-1). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
+Status: **Phases 0–7 done; Phase 8 (hosting + CD) in progress.** Deployed on AWS (us-east-1). On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
 Last updated: 2026-10-13
 
 ---
@@ -197,7 +197,14 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 
 ## 9. Progress log
 
-### Phase 7 (milestone met, 2026-10-13; done when CI is green)
+### Phase 8 (in progress, started 2026-10-13)
+
+- **Decisions:**
+  - The UI and API share one origin: CloudFront serves the site and forwards `/api/*` to API Gateway, so there's no CORS and no API URL in the bundle.
+  - The deploy workflow updates code only (UI to S3 plus a CloudFront invalidation, Lambda code) through a GitHub OIDC role scoped to those actions. Terraform stays a reviewed manual apply.
+  - Repository variables are set by `gh`; the one secret (the deployed access code) is set by the owner.
+
+### Phase 7 (done, 2026-10-13; CI green, PR #5)
 
 - **Entry condition met:** root access keys deactivated (see §6).
 - **Decisions:**

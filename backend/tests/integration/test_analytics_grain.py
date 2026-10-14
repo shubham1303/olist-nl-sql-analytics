@@ -53,8 +53,11 @@ def test_order_categories_sum_to_order_items(reader: Conn) -> None:
 def test_order_category_count_is_consistent(reader: Conn) -> None:
     mismatches = scalar(
         reader,
-        """SELECT count(*) FROM order_categories oc
-           WHERE oc.order_category_count <>
-                 (SELECT count(*) FROM order_categories x WHERE x.order_id = oc.order_id)""",
+        # one pass with a window count; a correlated subquery over the view ran into the
+        # reader's 10 s statement timeout on a slow CI runner
+        """SELECT count(*) FROM (
+             SELECT order_category_count, count(*) OVER (PARTITION BY order_id) AS rows_for_order
+             FROM order_categories) x
+           WHERE x.order_category_count <> x.rows_for_order""",
     )
     assert mismatches == 0

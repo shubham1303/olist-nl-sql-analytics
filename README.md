@@ -85,25 +85,25 @@ The reasoning behind most decisions is written up as ADRs in
 
 ## Where it's at
 
-Phases 0–8 of the [plan](plan.md) are done. It runs on AWS, and every merge to `main`
-deploys itself. The [eval harness](eval/README.md) has 57 questions (34 dev, 23 held
-out), each with a reference answer I checked by hand.
+All ten phases of the [plan](plan.md) are done. It runs on AWS, and every merge to
+`main` deploys itself. The [eval harness](eval/README.md) has 58 questions (35 dev,
+23 held out), each with a reference answer I checked by hand.
 
-Results on Sonnet 4.6:
+Results on Sonnet 4.6 (prompt v3):
 
-- **Dev: 34/34**, the same in three repeat runs, with no repairs needed. Through the
-  deployed API, an 8-question smoke subset also scores 8/8.
-- **Held out: 20/23.** The 20 drafted questions scored 19/20, but the 3 I wrote
-  myself scored only 1/3. So the drafted questions on their own made it look more
-  accurate than it is. I only run the held-out set at the end of a phase and never
-  tune anything on it.
+- **Dev: 35/35** in three repeat runs, with two repairs across the 105 questions.
+- **Held out: 21/23.** The 20 drafted questions scored 19/20, and the 3 I wrote myself
+  scored 2/3. At the previous checkpoint the drafted ones also scored 19/20 but mine
+  only 1/3, so the drafted questions on their own make it look more accurate than it
+  is. I only run the held-out set at the end of a phase and never tune anything on it.
 
 The benchmark is small (one held-out question is worth about 4 points), so I quote
 item counts rather than percentages. What changed between runs and why is in
 [eval/CHANGELOG.md](eval/CHANGELOG.md).
 
-Next is Phase 9, polish: a diagram and write-ups, measured costs, a demo GIF, and a
-few UX fixes that came out of the deployment.
+The two held-out misses are the kind the validator can't catch: a valid query with
+the wrong filter (items averaged over orders that have none), and a ranking that
+puts a NULL month first. That's why every answer shows its SQL and assumptions.
 
 ## Running it locally
 

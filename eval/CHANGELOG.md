@@ -206,3 +206,22 @@ In two after-runs, dev-017's first attempt self-joined the monthly CTE on
 (computed join keys are a documented limitation), and the one repair fixed it both
 times.
 
+## End-of-phase held-out checkpoint, Phase 9 (2026-10-14)
+
+[Run](results/20261014T042930Z_test_us-anthropic-claude-sonnet-4-6.md): clean commit
+`6223ef5`, prompt v3, one run with `--checkpoint`, no repairs.
+
+- **21/23**, up from 20/23 at the Phase 5 checkpoint.
+  - The original 20 items: **19/20**, the same as before.
+  - The 3 human-written items: **2/3**, up from 1/3.
+- **test-016** and **test-021** failed the same way as last time: items averaged over
+  all orders, and a ranking without `NULLS LAST`. In test-021 the assumptions also
+  claim September and October 2018 were excluded, though the SQL keeps them.
+- **test-023** passed on its first attempt this time. The model wrote SQL the
+  validator accepts. The `INVALID_JOIN_PATH` false rejection it hit before (a join
+  between `rn = 1` and `rn = 2` CTEs) is still in the validator, so I don't credit
+  any change with this. One held-out item is about 4 points, and a single run can't
+  separate a fix from variance.
+
+Nothing was changed because of this run.
+

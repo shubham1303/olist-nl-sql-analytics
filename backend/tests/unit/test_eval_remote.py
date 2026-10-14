@@ -123,8 +123,10 @@ def test_runner_over_a_real_local_server(server_url: str) -> None:  # noqa: F811
 
 
 def test_cli_needs_the_access_code_in_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    from olist_nlsql.evaluation import __main__ as cli
     from olist_nlsql.evaluation.__main__ import main
 
+    monkeypatch.setattr(cli, "load_dotenv", lambda: None)  # a developer's .env may set it
     monkeypatch.delenv("NLSQL_API_ACCESS_CODE", raising=False)
     monkeypatch.setattr(
         os, "environ", {k: v for k, v in os.environ.items() if k != "NLSQL_API_ACCESS_CODE"}

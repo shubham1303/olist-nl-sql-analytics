@@ -10,6 +10,11 @@ Model (docs/sql-safety.md, ADR 0014):
 * Duplicate-sensitive aggregates (SUM, AVG, COUNT, ...) over a duplicated source are
   rejected. Grouped or single-row derived tables are unique on their group keys, so
   pre-aggregating before joining is accepted.
+* Exception: when the join's many side is unique on the join keys plus its GROUP BY
+  columns (orders joined to order_sellers, grouped by seller_id), each duplicated row
+  occurs at most once per group. Per-entity statistics (AVG, COUNT, ...) are then
+  exact; SUM is still rejected, because it would credit every seller with the whole
+  order.
 * Bridge relations (order_sellers, order_categories) repeat order-level outcomes per
   seller/category (ADR 0011); aggregating those outcomes is only accepted when grouped
   by the bridge's attribution key.
@@ -50,9 +55,17 @@ class Source:
     dup_columns: frozenset[str] = frozenset()
     duplicated: bool = False
     duplicated_by: str = ""
+    # every join that multiplied this source: (many-side alias, its join columns), or
+    # (None, ...) for a cause no GROUP BY can undo
+    fanned_by: list[tuple[str | None, frozenset[str]]] = field(default_factory=list)
 
     def unique_on(self, columns: set[str]) -> bool:
         return any(key <= columns for key in self.unique_keys)
+
+
+# Statistics of one value per entity in each group: exact when each duplicated row
+# occurs at most once per group. SUM is left out on purpose (see the module docstring).
+_PER_GROUP_STATISTICS = frozenset({"AVG", "COUNT", "STDDEV", "PERCENTILE_CONT"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +203,8 @@ class GrainAnalyzer:
                 # Every row gets the one row of `right`: harmless unless aggregated over.
                 right.duplicated = not all(s.single_row for s in left_sources.values())
                 right.duplicated_by = "the CROSS JOIN repeats its single row on every row"
+                if right.duplicated:
+                    right.fanned_by.append((None, frozenset()))
                 return
             raise _fail(
                 ErrorCode.INVALID_JOIN_PATH,
@@ -279,9 +294,13 @@ class GrainAnalyzer:
         if not right_unique:
             reason = f"the one-to-many join to {right.label} on ({keys})"
             for source in left_sources.values():
+                source.fanned_by.append((right.alias, frozenset(right_cols)))
                 if not source.duplicated:
                     source.duplicated, source.duplicated_by = True, reason
         if not left_unique:
+            right.fanned_by.append(
+                (None, frozenset()) if left.duplicated else (left.alias, frozenset(left_cols))
+            )
             right.duplicated = True
             right.duplicated_by = (
                 left.duplicated_by
@@ -408,7 +427,10 @@ class GrainAnalyzer:
             if source is None:
                 continue  # correlated reference to an outer query: constant per row
             col = column.sql("postgres")
-            if source.duplicated or column.name in source.dup_columns:
+            many = self._once_per_group(aggregate, source, sources, group_exprs)
+            if many is not None:
+                self._check_per_group(aggregate, source, column, many)
+            elif source.duplicated or column.name in source.dup_columns:
                 reason = source.duplicated_by or "a one-to-many join inside the subquery"
                 advice = (
                     f" {aggregate.name}(DISTINCT ...) removes equal values, not duplicated "
@@ -443,6 +465,73 @@ class GrainAnalyzer:
                     column=col,
                     relation=relation.name,
                 )
+
+    def _once_per_group(
+        self,
+        aggregate: _Aggregate,
+        source: Source,
+        sources: dict[str, Source],
+        group_exprs: list[exp.Expr],
+    ) -> Source | None:
+        """The many side, when each row of the duplicated `source` occurs at most once per group.
+
+        That holds when one join multiplied `source`, and the many side of that join is
+        still unduplicated and unique on its join columns plus its GROUP BY columns, as for
+        orders joined to order_sellers and grouped by seller_id.
+        """
+        if (
+            not source.duplicated
+            or len(source.fanned_by) != 1
+            or aggregate.windowed
+            or aggregate.distinct
+            or not group_exprs
+        ):
+            return None
+        alias, keys = source.fanned_by[0]
+        many = sources.get(alias) if alias is not None else None
+        if many is None or many.duplicated:
+            return None
+        grouped = {
+            e.name for e in group_exprs if isinstance(e, exp.Column) and e.table == many.alias
+        }
+        return many if many.unique_on(set(keys) | grouped) else None
+
+    def _check_per_group(
+        self, aggregate: _Aggregate, source: Source, column: exp.Column, many: Source
+    ) -> None:
+        text, col = aggregate.node.sql("postgres"), column.sql("postgres")
+        relation = many.relation
+        per_entity = (
+            f"per {', '.join(sorted(relation.attribution_key))}"
+            if relation is not None and relation.is_bridge
+            else f"per group of {many.label}"
+        )
+        ref = source.lineage.get(column.name)
+        if (
+            relation is not None
+            and ref is not None
+            and ref[1] in relation.columns
+            and ref[1] not in relation.attributed | relation.grain_key
+        ):
+            raise _fail(
+                ErrorCode.FANOUT_RISK,
+                f"{text} uses the order-level {col}, but {relation.name} has its own "
+                f"{ref[1]} {per_entity}. Use {many.alias}.{ref[1]} instead.",
+                aggregate=text,
+                column=col,
+                relation=relation.name,
+            )
+        if aggregate.name not in _PER_GROUP_STATISTICS:
+            raise _fail(
+                ErrorCode.FANOUT_RISK,
+                f"{text} gives every matching {many.label} row the whole {source.label} "
+                f"value of {col}, so the totals {per_entity} add up to more than the real "
+                f"total. Sum a measure of {many.label} itself, or compute the total from "
+                f"{source.label} alone.",
+                aggregate=text,
+                column=col,
+                relation=source.label,
+            )
 
     # output
 

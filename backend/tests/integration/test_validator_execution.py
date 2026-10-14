@@ -68,6 +68,22 @@ def test_bridge_outcomes_overcount_orders(reader: Conn) -> None:
     assert overcounted > scalar(reader, "SELECT COUNT(*) FILTER (WHERE is_late) FROM orders")
 
 
+def test_one_side_per_seller_average_equals_the_bridge_answer(reader: Conn) -> None:
+    case = next(c for c in ACCEPTED if c.id == "one_side_avg_per_seller")
+    joined = reader.execute(f"SELECT * FROM ({case.sql}) x ORDER BY seller_id").fetchall()
+    bridge = reader.execute(
+        "SELECT seller_id, AVG(review_score), COUNT(order_id) FROM order_sellers "
+        "GROUP BY seller_id ORDER BY seller_id"
+    ).fetchall()
+    assert joined == bridge
+
+
+def test_one_side_sum_per_seller_overstates_the_total(reader: Conn) -> None:
+    sql = REJECTED_BY_ID["one_side_sum_per_seller"].sql
+    per_seller = scalar(reader, f"SELECT SUM(x.sum) FROM ({sql}) x")
+    assert per_seller > scalar(reader, "SELECT SUM(payment_total) FROM orders")
+
+
 def test_safe_preaggregation_gives_the_true_answer(executor: PostgresExecutor) -> None:
     case = next(c for c in ACCEPTED if c.id == "preaggregate_payments_cte")
     result = VALIDATOR.validate(case.sql)

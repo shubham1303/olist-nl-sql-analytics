@@ -235,6 +235,35 @@ ACCEPTED: list[Case] = [
         "bridge_money_is_additive",
         "SELECT SUM(revenue) FROM order_categories WHERE product_category = 'bed_bath_table'",
     ),
+    # one side joined to a bridge and grouped by its attribution key: each order once per
+    # seller/category, so per-entity statistics are exact (SUM stays rejected)
+    Case(
+        "one_side_avg_per_seller",
+        "SELECT s.seller_id, AVG(o.review_score) AS avg_score, COUNT(o.order_id) AS orders "
+        "FROM orders o JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_id",
+    ),
+    Case(
+        "per_order_cte_avg_per_seller",
+        "WITH gaps AS (SELECT order_id, "
+        "EXTRACT(EPOCH FROM (estimated_delivery_date::timestamp - purchased_at)) / 86400.0 "
+        "AS estimated_days FROM orders WHERE estimated_delivery_date IS NOT NULL) "
+        "SELECT os.seller_id, os.seller_state, COUNT(*) AS delivered, "
+        "AVG(os.delivery_days) - AVG(g.estimated_days) AS gap "
+        "FROM order_sellers os JOIN gaps g ON os.order_id = g.order_id WHERE os.is_delivered "
+        "GROUP BY os.seller_id, os.seller_state HAVING COUNT(*) >= 50 ORDER BY gap DESC LIMIT 20",
+    ),
+    Case(
+        "one_side_median_per_category",
+        "SELECT c.product_category, "
+        "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY o.delivery_days) AS median_days "
+        "FROM orders o JOIN order_categories c ON c.order_id = o.order_id "
+        "GROUP BY c.product_category",
+    ),
+    Case(
+        "one_side_order_total_avg_per_seller",
+        "SELECT s.seller_id, AVG(o.payment_total) AS avg_paid_per_order "
+        "FROM orders o JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_id",
+    ),
     # --- literal and syntax edge cases (regenerated SQL must mean the same to PostgreSQL)
     Case(
         "e_string_escaped_quote",
@@ -664,6 +693,50 @@ REJECTED: list[Case] = [
     Case(
         "bridge_joined_to_orders",
         "SELECT AVG(s.review_score) FROM order_sellers s JOIN orders o ON o.order_id = s.order_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_sum_per_seller",
+        "SELECT s.seller_id, SUM(o.payment_total) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_revenue_per_seller_has_a_bridge_version",
+        "SELECT s.seller_id, AVG(o.revenue) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_avg_grouped_by_seller_state",
+        "SELECT s.seller_state, AVG(o.review_score) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_state",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_avg_per_seller_windowed",
+        "SELECT s.seller_id, AVG(o.review_score) OVER (PARTITION BY s.seller_id) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_avg_per_seller_then_items",
+        "SELECT s.seller_id, AVG(o.review_score) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id "
+        "JOIN order_items i ON i.order_id = s.order_id AND i.seller_id = s.seller_id "
+        "GROUP BY s.seller_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_avg_grouped_by_order_on_items",
+        "SELECT i.order_id, AVG(o.review_score) FROM orders o "
+        "JOIN order_items i ON i.order_id = o.order_id GROUP BY i.order_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "one_side_avg_distinct_per_seller",
+        "SELECT s.seller_id, AVG(DISTINCT o.review_score) FROM orders o "
+        "JOIN order_sellers s ON s.order_id = o.order_id GROUP BY s.seller_id",
         E.FANOUT_RISK,
     ),
     # --- bypass attempts

@@ -68,6 +68,7 @@ orders.
 | `low_rating_rate` | Latest review 1–2 ÷ reviewed orders | 14,494 ÷ 98,673 † | 14.69% |
 | `late_delivery_rate` | Late ÷ delivered orders with a delivery date | 6,534 ÷ 96,470 † | 6.77% |
 | `average_delivery_days` | Mean purchase → delivery days | `AVG(delivery_days)` | 12.56 days |
+| `average_delivery_delay_days` | Mean delivered − estimated date (positive = late) | `AVG(delivery_delay_days)`; raw-table cross-check | −11.88 days |
 | `repeat_customer_rate` | Customers with ≥ 2 delivered orders ÷ those with ≥ 1 | catalog query over orders; 2,801 ÷ 93,358 † | 3.00% |
 
 Every metric's SQL passes the SQL validator, and a test checks this. The catalog

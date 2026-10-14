@@ -67,3 +67,26 @@ PostgreSQL semantics isn't feasible either.
   allows it.
 - Error codes are stable and messages are written as repair instructions for the
   Phase 3 retry.
+
+## Amendment (2026-10-14): per-group statistics of a one-side value
+
+A live question (seller lead time) joined a per-order CTE to `order_sellers` and
+averaged a CTE column per `seller_id`. That was rejected 3/3 as `FANOUT_RISK`, but the
+answer was exact: `order_sellers` is unique on `(order_id, seller_id)`, so within each
+seller group every order occurs once.
+
+- **Rule.** A duplicated source may feed `AVG`, `COUNT`, `STDDEV` or `PERCENTILE_CONT`
+  under three conditions:
+  - exactly one join multiplied it;
+  - that join's many side is not duplicated itself;
+  - the many side is unique on its join columns plus its `GROUP BY` columns.
+
+  The validator records the cause of each duplication, so it can decide this.
+- **Still rejected.**
+  - `SUM`: it would credit each seller with the whole order.
+  - One-side columns the bridge carries per seller: the error names the bridge column.
+  - Windowed and `DISTINCT` forms.
+  - Grouping by anything not unique, such as `seller_state`.
+- **Evidence.** The integration suite checks two things. The accepted per-seller
+  average equals the bridge-only answer row for row. The rejected per-seller `SUM`
+  adds up to more than the true total.

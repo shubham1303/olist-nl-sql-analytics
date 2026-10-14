@@ -99,7 +99,8 @@ def show(item: bm.BenchmarkItem) -> str:
     parts += [
         f"Compare: order_matters={compare.order_matters} abs_tol={compare.abs_tol} "
         f"rel_tol={compare.rel_tol} extra_columns={'ok' if compare.allow_extra_columns else 'no'} "
-        f"percent={'ok' if compare.allow_percent else 'no'}",
+        f"percent={'ok' if compare.allow_percent else 'no'} "
+        f"negated={'ok' if compare.allow_negated else 'no'}",
         "SQL:",
         "\n".join("  " + line for line in item.reference_sql.splitlines()),
         f"Result ({len(item.reference_result.rows) if item.reference_result else 0} rows):",

@@ -150,6 +150,9 @@ class NlSqlPipeline:
     executor: QueryExecutor
     settings: Settings
     catalog: Catalog = field(default_factory=load_catalog)
+    # Deployed: check with SELECT 1 that the database is awake before the model call, so
+    # a question that meets a paused Aurora costs no Bedrock call (it is retried anyway).
+    probe_database: bool = False
 
     def ask(self, question: str) -> PipelineResult:
         run = _Run(self, question.strip())
@@ -185,6 +188,14 @@ class _Run:
                 "input",
                 "QUESTION_TOO_LONG",
                 f"The question is longer than {limit} characters.",
+            )
+
+        if self.p.probe_database and self._database_resuming():
+            return self._fail(
+                "database_resuming",
+                "execution",
+                "DATABASE_RESUMING",
+                "The analytics database is starting up. Try again in a few seconds.",
             )
 
         started = time.perf_counter()
@@ -258,6 +269,15 @@ class _Run:
             outcome="accepted" if result.ok else "rejected",
         )
         return result
+
+    def _database_resuming(self) -> bool:
+        try:
+            self.p.executor.execute("SELECT 1", max_rows=1)  # constant, not model SQL
+        except DatabaseResumingError:
+            return True
+        except QueryExecutionError:
+            pass  # not a pause; the real query reports the failure in full
+        return False
 
     def _run_sql(self, generation: Generation, validation: ValidationResult) -> PipelineResult:
         if validation.sql is None:  # shouldn't happen, accepted results always have sql

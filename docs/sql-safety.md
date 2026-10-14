@@ -147,6 +147,16 @@ For every SELECT scope (including CTEs, derived tables and WHERE subqueries):
    - `COUNT(*)` is safe when at least one source isn't duplicated, because it then
      counts that source's rows.
    - `COUNT(DISTINCT x)`, `MIN` and `MAX` are always safe.
+   - **Grouped by the many side's key.** If the many side is unique on its join columns
+     plus its `GROUP BY` columns, each duplicated row occurs at most once per group.
+     `orders` joined to `order_sellers` and grouped by `seller_id` is an example.
+     `AVG`, `COUNT`, `STDDEV` and `PERCENTILE_CONT` of a one-side value are then exact
+     per-seller statistics, attributed the way ADR 0011 attributes outcomes. This holds
+     only when a single join multiplied the source and nothing multiplied the many side
+     afterwards.
+   - `SUM` stays rejected even then, because each seller would be credited with the
+     whole order. A one-side column that the bridge carries per seller (`revenue`,
+     `freight_total`, ...) is rejected with a pointer to the bridge's own column.
 4. **Bridge attribution.** `order_sellers` and `order_categories` repeat each order's
    delivery and review outcome for every seller or category (ADR 0011). Aggregating
    those columns, or `COUNT(*)`, requires `GROUP BY seller_id` or
@@ -198,6 +208,8 @@ GROUP BY 1;
 | `SELECT SUM(DISTINCT o.revenue) ... JOIN order_items ...` | DISTINCT drops equal values, not duplicate rows |
 | `WITH x AS (SELECT o.revenue FROM orders o JOIN order_items i ...) SELECT SUM(revenue) FROM x` | Fan-out hidden in a CTE, detected through column lineage |
 | `SELECT AVG(review_score) FROM order_sellers` | Each order counted once per seller |
+| `SELECT s.seller_id, SUM(o.payment_total) FROM orders o JOIN order_sellers s ... GROUP BY s.seller_id` | Every seller on an order is credited with the whole payment |
+| `SELECT s.seller_state, AVG(o.review_score) FROM orders o JOIN order_sellers s ... GROUP BY 1` | A state's two sellers on one order count it twice |
 | `SELECT customer_state, COUNT(*) FROM order_sellers GROUP BY 1` | Counts order-seller pairs, not orders |
 | `WITH t AS (SELECT SUM(revenue) AS total FROM orders) SELECT SUM(t.total) FROM orders CROSS JOIN t` | The single total repeated on every row |
 

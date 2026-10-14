@@ -1,0 +1,3 @@
+dev-035:
+  category: ambiguity
+  note: "Same 10 sellers and values as the reference, reported as delay (actual minus estimated, -43.40) instead of lead time (+43.40). Both sign conventions answer the question; scored by allow_negated from the next baseline on."

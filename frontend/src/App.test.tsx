@@ -177,9 +177,10 @@ describe('results', () => {
     expect(screen.getByText('13.5M')).toBeInTheDocument()
     expect(screen.getByText('Total merchandise revenue across all orders.')).toBeInTheDocument()
     expect(screen.getByText('revenue', { selector: 'code' })).toBeInTheDocument()
-    expect(screen.getByText(/LIMIT 1001/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('tab', { name: 'Table' }))
-    expect(screen.getByRole('table')).toHaveTextContent('13,494,400.74')
+    expect(screen.getByRole('table')).toHaveTextContent('13,494,400.74') // Table is the default tab
+    fireEvent.click(screen.getByRole('tab', { name: 'SQL' }))
+    expect(screen.getByText('LIMIT', { selector: '.tok-keyword' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'orders' })).toBeInTheDocument() // Uses: the view
   })
 
   it('chart choice follows the result shape, with a table always available', async () => {
@@ -204,7 +205,9 @@ describe('results', () => {
     await enterCode()
     await ask('Orders by state?')
     expect(screen.getByRole('img', { name: 'Bar chart of Orders' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Chart' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('heading', { name: 'SP has the highest orders: 15,540' })).toBeInTheDocument()
+    expect(screen.getByText('SP is 69% of the total shown (22,422).')).toBeInTheDocument()
+    expect(screen.getByRole('table')).toBeInTheDocument() // the data card is always there
   })
 
   it('a wide result is a table only, with a truncation notice', async () => {
@@ -228,7 +231,7 @@ describe('results', () => {
     render(<App />)
     await enterCode()
     await ask('List orders')
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument() // no chart for a wide result
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByRole('note')).toHaveTextContent('Showing the first 1,000 rows')
   })
@@ -281,3 +284,67 @@ describe('results', () => {
     expect(screen.getByLabelText('Access code')).toBeInTheDocument()
   })
 })
+
+describe('history and the catalog panel', () => {
+  beforeEach(() => on('/status', json(200, { db: 'ready' })))
+
+  it('keeps each answer in the history and re-opens it without asking again', async () => {
+    on('/query', json(200, answer()), json(200, answer({ question: 'Orders?', rows: [['99441']], columns: [{ name: 'orders', type: 'integer' }] })))
+    render(<App />)
+    await enterCode()
+    await ask('What was total revenue?')
+    await ask('Orders?')
+    const history = screen.getByRole('list', { name: 'Question history' })
+    expect(history).toHaveTextContent('Orders?')
+    expect(history).toHaveTextContent('What was total revenue?')
+    fireEvent.click(screen.getByRole('button', { name: /^Answered: What was total revenue\? just now$/ }))
+    expect(screen.getByText('13.5M')).toBeInTheDocument()
+    expect(calls.filter((c) => c.path === '/query')).toHaveLength(2)
+    expect(JSON.parse(sessionStorage.getItem('olist-nlsql-history')!)).toHaveLength(2)
+  })
+
+  it('New question clears the answer and shows the examples', async () => {
+    on('/query', json(200, answer()))
+    render(<App />)
+    await enterCode()
+    await ask('What was total revenue?')
+    fireEvent.click(screen.getByRole('button', { name: '+ New question' }))
+    expect(screen.queryByText('13.5M')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ask the Olist data a question' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/Ask a question/)).toHaveValue('')
+  })
+
+  it('an example question from the start page is asked directly', async () => {
+    on('/query', json(200, answer()))
+    render(<App />)
+    await enterCode()
+    fireEvent.click(screen.getByRole('button', { name: 'How many orders are in the dataset?' }))
+    await flush()
+    expect(JSON.parse(String(calls.at(-1)!.init?.body))).toEqual({ question: 'How many orders are in the dataset?' })
+  })
+
+  it('What can I ask? lists metrics and tables, filters, and closes on Escape', async () => {
+    render(<App />)
+    await enterCode()
+    fireEvent.click(screen.getAllByRole('button', { name: 'What can I ask?' })[0]!)
+    const dialog = screen.getByRole('dialog', { name: 'What can I ask?' })
+    expect(dialog).toHaveTextContent('Late delivery rate')
+    expect(dialog).toHaveTextContent('order_sellers')
+    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: 'lead time' } })
+    expect(dialog).toHaveTextContent('Average delivery time')
+    expect(dialog).not.toHaveTextContent('Late delivery rate')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('a metric in the answer opens its catalog entry', async () => {
+    on('/query', json(200, answer()))
+    render(<App />)
+    await enterCode()
+    await ask('What was total revenue?')
+    fireEvent.click(screen.getByText('revenue', { selector: 'code' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(document.getElementById('catalog-metric-revenue')).toHaveClass('targeted')
+  })
+})
+

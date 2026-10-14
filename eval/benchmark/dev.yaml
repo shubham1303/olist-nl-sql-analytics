@@ -740,3 +740,41 @@ items:
   verified_by: Shubham More
   verified_on: '2026-10-11'
   verified_hash: 0e80f9680d6ac040a011897488fd34ad085aa6741c0c1de45a1f09d17254a3ae
+- id: dev-035
+  question: Among sellers with at least 50 delivered orders, which 10 have the largest average lead time
+    (earliest delivery relative to their estimated delivery date)?
+  difficulty: hard
+  tags: [seller, delivery, human_written]
+  reference_sql: |
+    SELECT seller_id, -AVG(delivery_delay_days) AS average_lead_time_days
+    FROM order_sellers
+    GROUP BY seller_id
+    HAVING COUNT(*) FILTER (WHERE is_delivered) >= 50
+    ORDER BY average_lead_time_days DESC
+    LIMIT 10
+  compare: {abs_tol: '0.8', allow_negated: true}
+  notes: 'Human-written (the owner''s question, reworded by the owner to remove the ambiguity of ''largest
+    gap''). Lead time = estimated minus actual delivery; the reference reports it as a positive number
+    of days (minus the average delivery_delay_days), largest first. Counts are per distinct order: order_sellers
+    has one row per order x seller, so COUNT(*) FILTER (WHERE is_delivered) equals distinct delivered
+    orders. Counting order-item rows instead would admit 37 more sellers. Timestamp-based delivery times
+    differ by about 0.7 days and swap ranks 7 and 8 with the same top 10, hence abs_tol 0.8 and no order
+    check.'
+  reference_result:
+    columns:
+    - {name: seller_id, type: text}
+    - {name: average_lead_time_days, type: number}
+    rows:
+    - [b92e3c8f9738272ff7c59e111e108d7c, '43.4032258064516129']
+    - [dd2bdf855a9172734fbc3744021ae9b9, '23.0095238095238095']
+    - [8444e55c1f13cd5c179851e5ca5ebd00, '22.5543478260869565']
+    - [4e17c65a516f69d023a2ae78b84f28d6, '22.1147540983606557']
+    - [710e3548e02bc1d2831dfc4f1b5b14d4, '21.7862595419847328']
+    - [12b9676b00f60f3b700e83af21824c0e, '21.2406015037593985']
+    - [b372ee768ed69e46ca8cdbd267aa7a38, '19.1904761904761905']
+    - [e882b2a25a10b9c057cc49695f222c19, '19.1052631578947368']
+    - [516e7738bd8f735ac19a010ee5450d8d, '19.0810810810810811']
+    - [e8b3a3a38279a82f0e5d006d5e5b7d2c, '18.6000000000000000']
+  verified_by: Shubham More
+  verified_on: '2026-10-13'
+  verified_hash: 5fc4597e45849a606c1d10cec7d633b2f3467f91848bf83e50930d80f96ad081

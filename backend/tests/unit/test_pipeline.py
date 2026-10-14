@@ -10,7 +10,13 @@ from decimal import Decimal
 import pytest
 
 from olist_nlsql.config import Settings
-from olist_nlsql.db import ColumnInfo, QueryExecutionError, QueryResult, QueryTimeoutError
+from olist_nlsql.db import (
+    ColumnInfo,
+    DatabaseResumingError,
+    QueryExecutionError,
+    QueryResult,
+    QueryTimeoutError,
+)
 from olist_nlsql.llm import ModelError
 from olist_nlsql.llm.client import ModelReply, ModelRequest
 from olist_nlsql.llm.fake import FakeModelClient, reply_json
@@ -277,6 +283,41 @@ def test_database_failures_are_execution_failures_without_repair(
         code,
     )
     assert len(executor.executed) == 1 and result.validated_sql == executor.executed[0]
+
+
+def _probing(executor: RecordingExecutor, *replies: str) -> tuple[PipelineResult, FakeModelClient]:
+    model = FakeModelClient.of(*replies)
+    settings = Settings()
+    pipeline = NlSqlPipeline(
+        model, SqlValidator.from_catalog(settings=settings), executor, settings, probe_database=True
+    )
+    return pipeline.ask("What was total revenue?"), model
+
+
+def test_paused_database_is_detected_before_the_model_call() -> None:
+    executor = RecordingExecutor(error=DatabaseResumingError("resuming"))
+    result, model = _probing(executor, reply_json(GOOD))
+    assert result.status == "database_resuming" and model.requests == []
+    assert result.error is not None and result.error.code == "DATABASE_RESUMING"
+    assert executor.executed == ["SELECT 1"]
+
+
+def test_probe_then_answer_when_the_database_is_awake() -> None:
+    executor = RecordingExecutor()
+    result, model = _probing(executor, reply_json(GOOD))
+    assert result.status == "answered" and len(model.requests) == 1
+    assert executor.executed[0] == "SELECT 1" and len(executor.executed) == 2
+
+
+def test_other_probe_failures_fall_through_to_the_real_query() -> None:
+    executor = RecordingExecutor(error=QueryExecutionError("connection refused"))
+    result, model = _probing(executor, reply_json(GOOD))
+    assert result.status == "execution_failed" and len(model.requests) == 1
+
+
+def test_no_probe_unless_asked() -> None:
+    _, _, executor = run(reply_json(GOOD))
+    assert "SELECT 1" not in executor.executed
 
 
 @pytest.mark.parametrize(

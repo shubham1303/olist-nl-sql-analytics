@@ -41,3 +41,15 @@ month-over-month change, time between purchases, thresholds on rankings).
   dev runs stay valid for the changes they measured.
 - The benchmark is still small. Each held-out item is worth about 4.3 points, so
   differences of one or two items are not meaningful on their own.
+
+## Amendment (2026-10-13, Phase 9): dev-035
+
+The owner tried 15 of their own questions on the live site. One of them failed every
+time (validator rejection), and it became **dev-035**, which takes dev to 35 items.
+Two others weren't added:
+
+- The "delays vs reviews within category and state" question has no single correct
+  number as worded: it doesn't fix a group size or a summary. It's judged on the live
+  site only.
+- Two questions nearly duplicate held-out items (test-008, test-021), so they stay out
+  of dev to keep the held-out split clean.

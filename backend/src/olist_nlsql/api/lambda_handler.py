@@ -46,6 +46,7 @@ def build_api() -> Api:
         SqlValidator.from_catalog(settings=settings),
         executor,
         settings,
+        probe_database=True,
     )
     return Api(settings, pipeline, executor)
 

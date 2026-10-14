@@ -57,3 +57,16 @@ make more than one answer correct.
   make this unlikely; single-number answers rely on the tolerance being tight.
 - Reference SQL is tied to the data build. The integration suite re-runs every
   reference against the database and requires an exact match with its snapshot.
+
+## Amendment (2026-10-14): opt-in sign-insensitive columns
+
+Some quantities have two correct sign conventions: lead time (estimated minus actual)
+and delay (actual minus estimated) are the same number with opposite signs. An item
+can set `allow_negated: true`, and a generated column equal to minus the reference
+then also matches, the same way `allow_percent` accepts ×100.
+
+- It applies per column, at one scale for the whole column: a column with mixed signs
+  doesn't match.
+- It's only written to the item when set, so existing verification hashes are
+  unchanged.
+- First use: dev-035.

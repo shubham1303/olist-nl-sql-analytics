@@ -30,10 +30,11 @@ EXPECTED: dict[str, Decimal | int] = {
     "low_rating_rate": Decimal(14_494) / Decimal(98_673),  # audit counts
     "late_delivery_rate": Decimal(6_534) / Decimal(96_470),  # audit counts
     "average_delivery_days": Decimal("12.5582"),  # 4 dp
+    "average_delivery_delay_days": Decimal("-11.8759"),  # 4 dp, raw.orders cross-check
     "repeat_customer_rate": Decimal(2_801) / Decimal(93_358),  # audit counts
 }
 
-ROUNDED_TO_4DP = {"average_review_score", "average_delivery_days"}
+ROUNDED_TO_4DP = {"average_review_score", "average_delivery_days", "average_delivery_delay_days"}
 
 
 def evaluate(conn: Conn, relation: str, expression: str) -> object:

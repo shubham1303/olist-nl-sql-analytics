@@ -14,7 +14,7 @@ from olist_nlsql.config import Settings
 from olist_nlsql.sqlsafety import ErrorCode, Issue
 
 # Bump whenever prompt text or structure changes, so evaluation runs can be compared.
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 
 _INTRO = """\
 You translate business questions about the Olist Brazilian e-commerce marketplace into \
@@ -41,6 +41,7 @@ _BUSINESS_RULES = """\
 - A customer is customer_unique_id. Count customers with COUNT(DISTINCT customer_unique_id).
 - Late delivery rate = late orders / delivered orders that have a delivery date (COUNT(is_late) is the denominator).
 - review_score is each order's latest review; average it per order, never per review row.
+- When a question asks whether one thing differs by another "controlling for", "within" or "holding constant" other dimensions (e.g. are late orders rated lower than on-time orders within the same category and state?), answer with the conclusion, not a table of every group: compute the per-group comparison in a CTE, then return one summary row with the number of groups compared, the share of groups where the difference goes each way, and the order-weighted average difference. Skip groups too small to compare and state the minimum in assumptions. Return every group only if the question asks for the breakdown.
 - Use a catalog metric's definition whenever the question uses its name or an alias; do not add assumptions about it.
 - For a term the catalog does not define (e.g. "best sellers"), choose a reasonable meaning, state it in assumptions, and answer.
 - Keep exactly the period the question asks for, even outside 2017-01 to 2018-08. Do not filter to that window on your own unless the question asks for a trend or comparison without a period; then say so in assumptions.

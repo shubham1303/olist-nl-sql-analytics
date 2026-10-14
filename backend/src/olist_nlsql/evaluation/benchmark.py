@@ -28,7 +28,7 @@ Split = Literal["dev", "test"]
 SPLITS: tuple[Split, ...] = ("dev", "test")
 Difficulty = Literal["easy", "medium", "hard"]
 DIFFICULTIES: tuple[Difficulty, ...] = ("easy", "medium", "hard")
-EXPECTED_SIZES: dict[Split, int] = {"dev": 34, "test": 23}  # ADR 0018
+EXPECTED_SIZES: dict[Split, int] = {"dev": 35, "test": 23}  # ADR 0018, + dev-035 (Phase 9)
 
 # Areas from ADR 0006. Every item has at least one.
 AREAS = (
@@ -212,6 +212,8 @@ def _dump_compare(options: CompareOptions) -> dict[str, Any]:
         "rel_tol": str(options.rel_tol),
         "allow_extra_columns": options.allow_extra_columns,
         "allow_percent": options.allow_percent,
+        # only when set, so adding the option left every existing verification hash alone
+        **({"allow_negated": True} if options.allow_negated else {}),
     }
 
 
@@ -221,7 +223,14 @@ def _load_compare(raw: object, where: str) -> CompareOptions:
     data = _mapping(
         raw,
         where,
-        optional={"order_matters", "abs_tol", "rel_tol", "allow_extra_columns", "allow_percent"},
+        optional={
+            "order_matters",
+            "abs_tol",
+            "rel_tol",
+            "allow_extra_columns",
+            "allow_percent",
+            "allow_negated",
+        },
     )
     try:
         return CompareOptions(
@@ -230,6 +239,7 @@ def _load_compare(raw: object, where: str) -> CompareOptions:
             rel_tol=Decimal(str(data.get("rel_tol", DEFAULT_REL_TOL))),
             allow_extra_columns=bool(data.get("allow_extra_columns", True)),
             allow_percent=bool(data.get("allow_percent", False)),
+            allow_negated=bool(data.get("allow_negated", False)),
         )
     except InvalidOperation:
         raise BenchmarkError(f"{where}: tolerances must be numbers") from None
@@ -372,7 +382,9 @@ def _dump_item(item: BenchmarkItem) -> dict[str, Any]:
     }
     if item.compare != CompareOptions():
         defaults = _dump_compare(CompareOptions())
-        out["compare"] = {k: v for k, v in _dump_compare(item.compare).items() if defaults[k] != v}
+        out["compare"] = {
+            k: v for k, v in _dump_compare(item.compare).items() if defaults.get(k) != v
+        }
     if item.notes:
         out["notes"] = item.notes
     out["reference_result"] = _dump_result(item.reference_result)

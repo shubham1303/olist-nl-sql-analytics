@@ -782,6 +782,9 @@ th.num .sort {
   font-family: var(--mono);
   font-size: 0.84rem;
   line-height: 1.55;
+  /* show >= and <> as typed, not as font ligatures (≥, ≠) */
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
 }
 
 .tok-keyword {

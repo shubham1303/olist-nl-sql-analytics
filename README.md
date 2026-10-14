@@ -4,14 +4,18 @@ Ask questions about the [Olist e-commerce dataset][olist] in plain English. You 
 back the answer as a chart and a table, along with the SQL that produced it and any
 assumptions the model made along the way.
 
+![Asking for monthly revenue: the answer headline, line chart, highlighted SQL and the catalog panel](docs/demo.gif)
+
 **Live demo:** <https://dunn64bzakzr8.cloudfront.net>. It's behind an access code, so
 ask me for one. The database pauses when nobody is using it, so the first question
 after a quiet day waits about a minute while it wakes up.
 
 The interesting part of this project (for me anyway) isn't calling an LLM, it's
 making it safe to run whatever SQL the LLM hands back, and measuring honestly how
-often it's right. So most of the code is the validator, the evaluation harness, and
-the plumbing around them.
+often it's right. The model writes one thing, the SQL. Everything around it is the
+project: a catalog that decides what the model may see, a validator that decides
+what may run, a read-only database role, and an evaluation harness with
+hand-checked answers.
 
 ## How it works
 
@@ -27,21 +31,32 @@ the plumbing around them.
    try with the error code.
 5. The validator's regenerated SQL (never the model's original text) runs as a
    read-only role that can only see the analytics views.
-6. The browser picks a chart from the shape of the result (a KPI tile, line or bar),
-   with no LLM involved, and the table is always one click away.
+6. The browser picks a chart from the shape of the result (a KPI tile, line or bar)
+   and writes the headline and takeaways from the rows themselves, with no LLM
+   involved. The sortable table (with CSV export) and the highlighted SQL are one
+   tab away.
+
+The sidebar keeps the questions from this tab, and "What can I ask?" lists every
+metric, view and column the model can use, plus example questions. That panel is
+generated from the same catalog as the prompt.
 
 The model never sees actual rows from the database, and it's never called more
 than twice per question.
 
 ## Architecture
 
+```mermaid
+flowchart LR
+  user([Browser]) --> cf[CloudFront<br/>CSP, one origin]
+  cf -- "/" --> s3[(S3<br/>React app)]
+  cf -- "/api/*" --> apigw[API Gateway<br/>throttled] --> lambda[Lambda<br/>Python 3.13]
+  lambda --> bedrock[Bedrock<br/>Claude Sonnet 4.6]
+  lambda --> validator{{sqlglot<br/>validator}}
+  validator -- "approved SQL only" --> dataapi[RDS Data API] --> aurora[(Aurora Serverless v2<br/>read-only role,<br/>scales to 0)]
 ```
-Browser ── CloudFront ─┬─ /        → S3 (the React app, private bucket)
-                       └─ /api/*   → API Gateway (throttled) → Lambda (Python 3.13)
-                                                                ├─ Bedrock: Claude Sonnet 4.6
-                                                                └─ RDS Data API → Aurora Serverless v2
-                                                                   (PostgreSQL, private subnets, scales to 0)
-```
+
+More detail, including the path of one question step by step, is in
+[docs/architecture.md](docs/architecture.md).
 
 - **The database role is the security boundary.** The Lambda can only call the Data
   API as `analytics_reader` (read-only, analytics views only, 10 s statement timeout).
@@ -58,33 +73,37 @@ Browser ── CloudFront ─┬─ /        → S3 (the React app, private buck
   the site, invalidate the cache and update the Lambda code. Infrastructure is
   Terraform, applied by hand after review.
 - **Cost control.** API throttling, per-request limits, a $20 budget alert and alarms.
-  Idle, it should cost about $2 a month. That's an estimate from list prices;
-  measured costs come in Phase 9.
+  Measured: about **$1.25 a month idle** (mostly Secrets Manager; a paused Aurora
+  bills no compute), and about **$0.01–0.03 per question** for the model. The first
+  days, including all the evaluation runs, came to $3.63, 94% of it Bedrock.
+  [docs/costs.md](docs/costs.md) has the breakdown.
+- **Security** is written up in [docs/security.md](docs/security.md): the layers,
+  the tests that prove each one, and the gaps I know about.
 
 The reasoning behind most decisions is written up as ADRs in
 [docs/adr](docs/adr/README.md).
 
 ## Where it's at
 
-Phases 0–8 of the [plan](plan.md) are done. It runs on AWS, and every merge to `main`
-deploys itself. The [eval harness](eval/README.md) has 57 questions (34 dev, 23 held
-out), each with a reference answer I checked by hand.
+All ten phases of the [plan](plan.md) are done. It runs on AWS, and every merge to
+`main` deploys itself. The [eval harness](eval/README.md) has 58 questions (35 dev,
+23 held out), each with a reference answer I checked by hand.
 
-Results on Sonnet 4.6:
+Results on Sonnet 4.6 (prompt v3):
 
-- **Dev: 34/34**, the same in three repeat runs, with no repairs needed. Through the
-  deployed API, an 8-question smoke subset also scores 8/8.
-- **Held out: 20/23.** The 20 drafted questions scored 19/20, but the 3 I wrote
-  myself scored only 1/3. So the drafted questions on their own made it look more
-  accurate than it is. I only run the held-out set at the end of a phase and never
-  tune anything on it.
+- **Dev: 35/35** in three repeat runs, with two repairs across the 105 questions.
+- **Held out: 21/23.** The 20 drafted questions scored 19/20, and the 3 I wrote myself
+  scored 2/3. At the previous checkpoint the drafted ones also scored 19/20 but mine
+  only 1/3, so the drafted questions on their own make it look more accurate than it
+  is. I only run the held-out set at the end of a phase and never tune anything on it.
 
 The benchmark is small (one held-out question is worth about 4 points), so I quote
 item counts rather than percentages. What changed between runs and why is in
 [eval/CHANGELOG.md](eval/CHANGELOG.md).
 
-Next is Phase 9, polish: a diagram and write-ups, measured costs, a demo GIF, and a
-few UX fixes that came out of the deployment.
+The two held-out misses are the kind the validator can't catch: a valid query with
+the wrong filter (items averaged over orders that have none), and a ranking that
+puts a NULL month first. That's why every answer shows its SQL and assumptions.
 
 ## Running it locally
 

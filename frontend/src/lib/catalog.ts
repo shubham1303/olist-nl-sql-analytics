@@ -31,6 +31,7 @@ export interface Topic {
 export interface UiCatalog {
   notes: string[]
   glossary: { term: string; meaning: string }[]
+  complete_months: { first: string; last: string } // 'YYYY-MM', ADR 0013
   limits: { max_question_chars: number; max_result_rows: number }
   topics: Topic[]
   metrics: CatalogMetric[]

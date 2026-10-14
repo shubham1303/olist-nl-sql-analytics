@@ -160,6 +160,38 @@ describe('summary', () => {
     expect(s.takeaways).toEqual(['From 100 in Jan 2018 to 120 in Mar 2018 (+20%).', 'Lowest: 100 in Jan 2018.'])
   })
 
+  it('line: partial months are left out of peak, low and change, and named', () => {
+    const r = result(
+      [
+        { name: 'purchase_month', type: 'date' },
+        { name: 'order_count', type: 'integer' },
+      ],
+      [
+        ['2018-01-01', 7269],
+        ['2018-07-01', 6292],
+        ['2018-08-01', 6512],
+        ['2018-09-01', 16],
+        ['2018-10-01', 4],
+      ],
+    )
+    const s = summarise(r, selectChart(r.columns, r.rows))
+    expect(s.headline).toBe('Order count peaked at 7,269 in Jan 2018')
+    expect(s.takeaways).toEqual([
+      'From 7,269 in Jan 2018 to 6,512 in Aug 2018 (-10%).',
+      'Lowest: 6,292 in Jul 2018.',
+      'Measured over complete months only; Sep 2018, Oct 2018 left out (partial data).',
+    ])
+    // a question about 2016 alone keeps every point
+    const early = result(r.columns, [
+      ['2016-09-01', 4],
+      ['2016-10-01', 324],
+    ])
+    expect(summarise(early, selectChart(early.columns, early.rows)).takeaways).toEqual([
+      'From 4 in Sep 2016 to 324 in Oct 2016 (+8000%).',
+      'Lowest: 4 in Sep 2016.',
+    ])
+  })
+
   it('one row with several columns becomes stats; wide results count rows', () => {
     const one = result(
       [

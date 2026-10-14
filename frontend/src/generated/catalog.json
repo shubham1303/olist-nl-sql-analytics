@@ -33,6 +33,10 @@
       "meaning": "freight (freight_value / freight_total), reported separately from revenue."
     }
   ],
+  "complete_months": {
+    "first": "2017-01",
+    "last": "2018-08"
+  },
   "limits": {
     "max_question_chars": 500,
     "max_result_rows": 1000

@@ -1,0 +1,6 @@
+test-016:
+  category: wrong_filter_or_time_window
+  note: "Same as the Phase 4 and Phase 5 checkpoints: AVG(item_count) over all orders, including those with no items; the reference uses revenue orders. Held-out, not acted on."
+test-021:
+  category: wrong_filter_or_time_window
+  note: "Same mechanism as the Phase 5 checkpoint: ORDER BY monthly revenue DESC without NULLS LAST, so a 2018 month with no revenue orders (NULL revenue) sorted first. The assumptions also claim 2018-09/10 were excluded, but the SQL does not exclude them. Human-written item. Held-out, not acted on."

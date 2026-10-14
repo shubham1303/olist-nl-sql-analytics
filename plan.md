@@ -1,7 +1,7 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–8 done; Phase 9 (polish) next.** Live at https://dunn64bzakzr8.cloudfront.net (access code required); every merge to `main` deploys. On `us.anthropic.claude-sonnet-4-6`: dev 34/34, held-out 20/23 (original 20 items 19/20, human-written 1/3). The local app runs end to end (Docker Postgres + Bedrock). Decisions locked in [docs/adr/](docs/adr/README.md).
-Last updated: 2026-10-13
+Status: **Phases 0–9 done.** Live at https://dunn64bzakzr8.cloudfront.net (access code required); every merge to `main` deploys. On `us.anthropic.claude-sonnet-4-6`, prompt v3: dev 35/35 (3 runs), held-out 21/23 (original 20 items 19/20, human-written 2/3). Measured idle cost about $1.25/month. Decisions locked in [docs/adr/](docs/adr/README.md).
+Last updated: 2026-10-14
 
 ---
 
@@ -139,7 +139,7 @@ A phase is done only when its milestone is met and CI is green.
 | 6 ✅ | **Local API + UI** | `local_app.py`; React UI: access code, question box, table, auto chart, SQL panel, metrics and assumptions, truncation, error and "Starting analytics database..." states | **Met:** local demo against Docker Postgres + Bedrock Sonnet 4.6 (bar, line and KPI answers, unanswerable question, simulated resume, phone width); 505 backend unit tests incl. 24 API tests, 36 frontend tests (PR #4) |
 | 7 ✅ | **AWS deployment** | **Entry condition:** root access keys deactivated and all AWS work through IAM users/roles (see §6). Terraform: state bucket, VPC (private subnets, S3 gateway endpoint), Aurora + Data API, secrets, `aws_s3` load, Lambda (+ reserved concurrency), HTTP API (+ throttling), logs/EMF/dashboard/alarms, $20 budget; `DataApiExecutor`; `/status` warm-up | **Met (2026-10-13):** executor contract 10/10 on Aurora through the Data API; eval smoke subset through the deployed API 8/8; cold start from a paused cluster: 503 `database_resuming`, then `/status` ready after 26.9 s, then answered |
 | 8 ✅ | **Hosting + CD** | S3 + CloudFront (OAC); GitHub OIDC role; deploy workflow; manual eval workflow | **Met (2026-10-13):** Deploy #2 ran on its own after merging PR #7 (CI, then OIDC deploy, then smoke test); the public URL serves the app; no AWS keys are stored in GitHub |
-| 9 | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | Someone unfamiliar can understand the project in 2 minutes and reproduce it in 30 |
+| 9 ✅ | **Polish** | README with diagram, eval results (as measured), cost breakdown (as measured), security write-up, demo GIF | **Met (2026-10-14):** README opens with a demo GIF, a diagram and measured results; [architecture](docs/architecture.md), [costs](docs/costs.md) and [security](docs/security.md) write-ups; UI revamp live (PR #9); held-out checkpoint 21/23 |
 
 **Stretch (after Phase 9, each needs justification):** follow-up questions, query cache,
 EXPLAIN cost guard, Playwright e2e, feedback capture.
@@ -200,6 +200,58 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ---
 
 ## 9. Progress log
+
+### Phase 9 (done, 2026-10-14)
+
+- **Input:** 15 questions the owner asked on the live site. Q1–Q13 were correct.
+  - Q14 (seller lead time): a false `FANOUT_RISK` rejection, 3/3.
+  - Q15 (late vs on-time reviews within category and state): a 679-row table with
+    no conclusion.
+- **Benchmark:** dev-035 added from Q14. It was reworded by the owner, verified, and
+  scored with the new `allow_negated` option (ADR 0017 amendment), so dev now has 35
+  items. Q15 and two near-duplicates of held-out items stay out (ADR 0018 amendment).
+- **Accuracy (dev evidence only, PR #9):**
+  - **Validator:** `AVG`, `COUNT`, `STDDEV` and `PERCENTILE_CONT` of a one-side value
+    are allowed when the many side is unique on its join keys plus its `GROUP BY`
+    columns. `SUM` stays rejected (ADR 0014 amendment, 11 corpus cases, integration
+    proof).
+  - **Catalog:** the `average_delivery_delay_days` metric, and the delay sign spelled
+    out on every delay column.
+  - **Prompt v3:** association questions with controls answer with a summary row.
+  - **API:** `/query` probes the database before the model call.
+  - **Result:** dev 35, 35, 34 before and 35, 35, 35 after. I read this as no
+    regression; the only difference is one flaky item. One run lost to a network
+    outage was triaged and replaced.
+- **UI revamp (PR #9):**
+  - Sidebar with session history.
+  - A "What can I ask?" panel generated from the catalog and the dev split, with a
+    drift test.
+  - Computed answer headline and takeaways, and a stats grid for one-row summaries
+    (ADR 0007 amendment).
+  - Sortable table with CSV export, and highlighted SQL with "Uses" chips.
+  - Checked locally and on the live site after Deploy #4.
+- **Part 2:**
+  - Trend takeaways measure complete months only.
+  - The start page no longer names the model, and the SQL view shows operators
+    without ligatures.
+  - Docs: [architecture.md](docs/architecture.md) with Mermaid diagrams,
+    [costs.md](docs/costs.md), [security.md](docs/security.md), and the demo GIF in
+    the README.
+- **Measured costs (Cost Explorer, usage before credits):**
+  - $3.63 from 2026-10-08 to 10-13, 94% of it Bedrock evaluation runs.
+  - About $0.007 per question with a warm prompt cache, and about $0.03 for a lone
+    question.
+  - About $1.25 a month idle (3 secrets; a paused Aurora bills no compute), against
+    the $2 estimate.
+- **Held-out checkpoint:** 21/23 on clean `6223ef5`. The original 20 scored 19/20;
+  the human-written 3 scored 2/3, up from 1/3. test-016 and test-021 failed as
+  before. Nothing was changed because of it.
+- **Open:**
+  - The validator still rejects joins on computed keys, such as dev-017's
+    `prev.month + INTERVAL '1 month'` and test-023's `rn = 1` / `rn = 2` pattern.
+  - `NULLS LAST` in rankings still slips through (test-021).
+  - Activating the `Project` cost-allocation tag would give per-project cost
+    without the service-level split.
 
 ### Phase 8 (done, 2026-10-13)
 

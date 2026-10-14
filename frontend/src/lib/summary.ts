@@ -5,6 +5,7 @@
 import type { Cell, Column, QueryResult } from '../api/types.ts'
 import { formatTimeLabel, formatValue, humanise } from '../charts/format.ts'
 import { isNumeric, toNumber, type ChartSpec } from '../charts/selectChart.ts'
+import { CATALOG } from './catalog.ts'
 
 export interface Stat {
   label: string
@@ -59,17 +60,28 @@ function barSummary(spec: Extract<ChartSpec, { kind: 'bar' }>, columns: Column[]
   return { headline: `${top.label} has the highest ${name.toLowerCase()}: ${fmt(top.value)}`, takeaways, stats: null }
 }
 
+function isCompleteMonth(raw: string): boolean {
+  const month = raw.slice(0, 7) // 'YYYY-MM' from a month label, date or timestamp
+  return month >= CATALOG.complete_months.first && month <= CATALOG.complete_months.last
+}
+
 function lineSummary(spec: Extract<ChartSpec, { kind: 'line' }>, columns: Column[], rows: Cell[][]): Summary {
   const seriesColumn = columns[spec.series[0]!]!
   const name = humanise(seriesColumn.name)
   const fmt = (v: number) => formatValue(v, seriesColumn.name)
-  const points = [...rows]
+  const all = [...rows]
     .sort((a, b) => String(a[spec.x]).localeCompare(String(b[spec.x])))
     .flatMap((row) => {
       const value = toNumber(row[spec.series[0]!])
-      return value === null ? [] : [{ x: formatTimeLabel(String(row[spec.x])), value }]
+      const raw = String(row[spec.x])
+      return value === null ? [] : [{ raw, x: formatTimeLabel(raw), value }]
     })
-  if (points.length === 0) return { headline: null, takeaways: [], stats: null }
+  if (all.length === 0) return { headline: null, takeaways: [], stats: null }
+  // Partial months (e.g. Oct 2018 has 4 orders) would dominate peak, low and change:
+  // measure over complete months when at least two are present, and say so.
+  const complete = all.filter((p) => isCompleteMonth(p.raw))
+  const left = complete.length >= 2 ? all.filter((p) => !isCompleteMonth(p.raw)) : []
+  const points = left.length > 0 ? complete : all
   const peak = points.reduce((a, b) => (b.value > a.value ? b : a))
   const low = points.reduce((a, b) => (b.value < a.value ? b : a))
   const first = points[0]!
@@ -79,6 +91,10 @@ function lineSummary(spec: Extract<ChartSpec, { kind: 'line' }>, columns: Column
     const change = first.value !== 0 ? ` (${last.value >= first.value ? '+' : ''}${percent(last.value - first.value, Math.abs(first.value))})` : ''
     takeaways.push(`From ${fmt(first.value)} in ${first.x} to ${fmt(last.value)} in ${last.x}${change}.`)
     takeaways.push(`Lowest: ${fmt(low.value)} in ${low.x}.`)
+  }
+  if (left.length > 0) {
+    const names = left.length <= 3 ? left.map((p) => p.x).join(', ') : `${left.length} periods`
+    takeaways.push(`Measured over complete months only; ${names} left out (partial data).`)
   }
   if (spec.series.length > 1) {
     const others = spec.series.slice(1).map((i) => humanise(columns[i]!.name).toLowerCase())

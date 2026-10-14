@@ -20,6 +20,9 @@ from olist_nlsql.config import Settings
 from olist_nlsql.dbsetup.env import REPO_ROOT
 
 OUTPUT = REPO_ROOT / "frontend" / "src" / "generated" / "catalog.json"
+# ADR 0013: months with complete volume. Trend takeaways in the UI measure change over
+# these only; a test checks the dataset notes still state the same window.
+COMPLETE_MONTHS = ("2017-01", "2018-08")
 
 # An item goes to the first topic whose tag it has; the rest are "Orders and revenue".
 _TOPIC_BY_TAG = (
@@ -62,6 +65,7 @@ def ui_catalog(catalog: Catalog, settings: Settings) -> dict[str, Any]:
         " by python -m olist_nlsql.uicatalog; do not edit",
         "notes": [" ".join(n.split()) for n in catalog.dataset_notes],
         "glossary": [{"term": g.term, "meaning": g.meaning} for g in catalog.glossary],
+        "complete_months": {"first": COMPLETE_MONTHS[0], "last": COMPLETE_MONTHS[1]},
         "limits": {
             "max_question_chars": settings.max_question_chars,
             "max_result_rows": settings.max_result_rows,

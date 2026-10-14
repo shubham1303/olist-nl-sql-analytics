@@ -4,6 +4,8 @@ Ask questions about the [Olist e-commerce dataset][olist] in plain English. You 
 back the answer as a chart and a table, along with the SQL that produced it and any
 assumptions the model made along the way.
 
+![Asking for monthly revenue: the answer headline, line chart, highlighted SQL and the catalog panel](docs/demo.gif)
+
 **Live demo:** <https://dunn64bzakzr8.cloudfront.net>. It's behind an access code, so
 ask me for one. The database pauses when nobody is using it, so the first question
 after a quiet day waits about a minute while it wakes up.

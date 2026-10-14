@@ -40,3 +40,23 @@ Two gaps found in dev results, handled inside the same rules:
   and order counts on one axis would flatten one of them. When series differ more
   than 10× in scale the line chart becomes small multiples, one panel per series. It
   never uses a second axis.
+
+## Amendment (2026-10-14, Phase 9): headline, takeaways and stats
+
+The redesigned answer view adds text above the chart. All of it is computed from the
+result rows in the browser
+([summary.ts](../../frontend/src/lib/summary.ts)), never by the model, which still
+never sees results (ADR 0002).
+
+- **Bar results:** a headline naming the highest category, and takeaways naming the
+  lowest. A share of the total shown appears only when the values add up: not
+  rates, averages, scores or days.
+- **Line results:** the peak, the change from the first to the last point, and the
+  low point.
+- **One row with up to 8 columns** (such as a prompt-v3 summary row) is shown as a
+  grid of labelled stats instead of a one-row table.
+- **Other tables:** a row count.
+
+The wording is neutral ("highest", not "best"), because the SQL decides what the
+ranking means. The chart rules above are unchanged, and the table and SQL are always
+one tab away.

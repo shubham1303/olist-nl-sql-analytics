@@ -1,0 +1,997 @@
+{
+  "generated_from": "backend/src/olist_nlsql/catalog/catalog.yaml and eval/benchmark/dev.yaml by python -m olist_nlsql.uicatalog; do not edit",
+  "notes": [
+    "Timestamps are local Brazilian time, stored without a time zone.",
+    "Orders span 2016-09-04 to 2018-10-17, but only 2017-01 through 2018-08 has complete monthly volume. 2016 is sparse (no orders at all in 2016-11) and 2018-09/2018-10 hold only 20 orders.",
+    "2017-01-01 to 2018-08-31 is the recommended window for trends and period comparisons (ADR 0013). Do not add this filter automatically; when a question asks about any period, use exactly that period, and when it touches 2016 or 2018-09/2018-10, state that those months are incomplete.",
+    "Customer and seller locations are Brazilian cities and two-letter state codes (e.g. SP, RJ).",
+    "Product categories are English snake_case names (e.g. health_beauty, bed_bath_table)."
+  ],
+  "glossary": [
+    {
+      "term": "customer",
+      "meaning": "A real person, identified by customer_unique_id. Never count per-order customer IDs."
+    },
+    {
+      "term": "order date",
+      "meaning": "The purchase timestamp (purchased_at / purchase_date / purchase_month)."
+    },
+    {
+      "term": "sales",
+      "meaning": "Merchandise revenue (metric revenue) unless the question says orders or units."
+    },
+    {
+      "term": "category",
+      "meaning": "product_category, an English category name."
+    },
+    {
+      "term": "state / region",
+      "meaning": "customer_state or seller_state (two-letter Brazilian state code)."
+    },
+    {
+      "term": "shipping / delivery cost",
+      "meaning": "freight (freight_value / freight_total), reported separately from revenue."
+    }
+  ],
+  "limits": {
+    "max_question_chars": 500,
+    "max_result_rows": 1000
+  },
+  "topics": [
+    {
+      "topic": "Orders and revenue",
+      "questions": [
+        "How many orders are in the dataset?",
+        "How many orders were canceled?",
+        "How many orders included at least one payment of each payment type?",
+        "What was the cancellation rate in 2017?",
+        "What is the average number of installments for credit card payments?",
+        "How many orders are there in each order status?"
+      ]
+    },
+    {
+      "topic": "Trends over time",
+      "questions": [
+        "What was total merchandise revenue in 2017?",
+        "How many orders were placed in each month of 2018?",
+        "What was the average order value in 2017 and in 2018?",
+        "What was the month-over-month revenue growth rate for each month from February to August 2018?",
+        "At which hour of the day are the most orders placed?"
+      ]
+    },
+    {
+      "topic": "Customers",
+      "questions": [
+        "How many unique customers have placed an order?",
+        "Which 10 customer states generated the most revenue?",
+        "How many orders from customers in São Paulo state (SP) were delivered?",
+        "What is the repeat customer rate?",
+        "What percentage of 2017 revenue came from customers in SP?",
+        "How many new customers made their first purchase in each month of 2017?",
+        "How many customers placed more than one order, and what percentage of all unique customers do they represent?",
+        "What percentage of total merchandise revenue comes from the top 10% of customers ranked by their total spending?",
+        "For customers whose first purchase was in January 2018, how many returned to place another order within 90 days, and what percentage of that cohort does this represent?"
+      ]
+    },
+    {
+      "topic": "Products and categories",
+      "questions": [
+        "Which 5 product categories generated the most revenue?",
+        "How many items were sold in the health_beauty category in 2018?",
+        "What is the average weight in grams of products in the furniture_decor category?",
+        "How much revenue came from products weighing more than 10 kg?"
+      ]
+    },
+    {
+      "topic": "Sellers",
+      "questions": [
+        "Which 10 sellers had the highest revenue in 2018?",
+        "Among sellers with at least 20 delivered orders, which 3 have the highest late delivery rate?",
+        "How many sellers have sold at least one item?",
+        "Among sellers with at least 50 delivered orders, which 10 have the largest average lead time (earliest delivery relative to their estimated delivery date)?"
+      ]
+    },
+    {
+      "topic": "Delivery",
+      "questions": [
+        "What is the overall late delivery rate?",
+        "Which 5 customer states have the longest average delivery time?",
+        "What is the average review score for each delivery status?",
+        "What is the median delivery time in days for delivered orders?",
+        "For each month of 2018, what percentage of delivered orders arrived late? Return only months with at least 100 delivered orders, ranked from highest to lowest late delivery rate."
+      ]
+    },
+    {
+      "topic": "Reviews",
+      "questions": [
+        "What is the average review score across all reviewed orders?",
+        "Among product categories with at least 500 reviewed orders, which 5 have the lowest average review score? Ignore products without a category."
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "name": "order_count",
+      "label": "Orders",
+      "definition": "Number of orders placed, all statuses, unless the question restricts the status.",
+      "unit": "orders",
+      "aliases": [
+        "orders",
+        "number of orders",
+        "order volume",
+        "total orders",
+        "purchases"
+      ]
+    },
+    {
+      "name": "delivered_order_count",
+      "label": "Delivered orders",
+      "definition": "Orders with status delivered.",
+      "unit": "orders",
+      "aliases": [
+        "delivered orders",
+        "completed orders",
+        "fulfilled orders"
+      ]
+    },
+    {
+      "name": "canceled_order_count",
+      "label": "Canceled orders",
+      "definition": "Orders with status canceled.",
+      "unit": "orders",
+      "aliases": [
+        "cancelled orders",
+        "canceled orders",
+        "cancellations"
+      ]
+    },
+    {
+      "name": "cancellation_rate",
+      "label": "Cancellation rate",
+      "definition": "Share of all orders whose status is canceled.",
+      "unit": "ratio",
+      "aliases": [
+        "cancellation rate",
+        "cancel rate",
+        "percentage of orders canceled"
+      ]
+    },
+    {
+      "name": "revenue",
+      "label": "Merchandise revenue",
+      "definition": "Merchandise revenue. Sum of item prices, excluding freight, for orders that are not canceled or unavailable and that contain at least one item.",
+      "unit": "BRL",
+      "aliases": [
+        "revenue",
+        "merchandise revenue",
+        "sales",
+        "sales value",
+        "gmv",
+        "gross merchandise value",
+        "merchandise revenue",
+        "product revenue"
+      ]
+    },
+    {
+      "name": "average_order_value",
+      "label": "Average order value",
+      "definition": "Revenue divided by the number of revenue orders.",
+      "unit": "BRL",
+      "aliases": [
+        "aov",
+        "average order value",
+        "average basket",
+        "average ticket",
+        "average order size"
+      ]
+    },
+    {
+      "name": "items_sold",
+      "label": "Items sold",
+      "definition": "Number of item units in revenue orders.",
+      "unit": "items",
+      "aliases": [
+        "items sold",
+        "units sold",
+        "units",
+        "quantity sold",
+        "volume"
+      ]
+    },
+    {
+      "name": "freight_value",
+      "label": "Freight value",
+      "definition": "Freight charged on items in revenue orders.",
+      "unit": "BRL",
+      "aliases": [
+        "freight",
+        "shipping cost",
+        "shipping fees",
+        "delivery charges"
+      ]
+    },
+    {
+      "name": "total_order_value",
+      "label": "Total order value",
+      "definition": "Item prices plus freight for revenue orders (what the customer was charged before payment-plan effects).",
+      "unit": "BRL",
+      "aliases": [
+        "total order value",
+        "order value including freight",
+        "gross order value",
+        "total charged"
+      ]
+    },
+    {
+      "name": "payment_value",
+      "label": "Payment value",
+      "definition": "Sum of payment records for revenue orders.",
+      "unit": "BRL",
+      "aliases": [
+        "payments",
+        "amount paid",
+        "payment value",
+        "payments received"
+      ]
+    },
+    {
+      "name": "customer_count",
+      "label": "Customers",
+      "definition": "Number of distinct real customers (customer_unique_id).",
+      "unit": "customers",
+      "aliases": [
+        "customers",
+        "number of customers",
+        "unique customers",
+        "buyers",
+        "shoppers"
+      ]
+    },
+    {
+      "name": "average_review_score",
+      "label": "Average review score",
+      "definition": "Mean score (1-5) of each reviewed order's latest review.",
+      "unit": "score",
+      "aliases": [
+        "average rating",
+        "average review",
+        "review score",
+        "customer satisfaction score",
+        "csat"
+      ]
+    },
+    {
+      "name": "low_rating_rate",
+      "label": "Low rating rate",
+      "definition": "Share of reviewed orders whose latest review scored 1 or 2.",
+      "unit": "ratio",
+      "aliases": [
+        "low rating rate",
+        "negative review rate",
+        "bad review rate",
+        "share of 1-2 star reviews"
+      ]
+    },
+    {
+      "name": "late_delivery_rate",
+      "label": "Late delivery rate",
+      "definition": "Share of delivered orders (with a delivery date) that arrived after the estimated delivery date, compared by calendar date.",
+      "unit": "ratio",
+      "aliases": [
+        "late delivery rate",
+        "late rate",
+        "delay rate",
+        "percentage delivered late",
+        "on-time delivery (1 minus this)"
+      ]
+    },
+    {
+      "name": "average_delivery_days",
+      "label": "Average delivery time",
+      "definition": "Mean days from purchase to customer delivery for delivered orders.",
+      "unit": "days",
+      "aliases": [
+        "average delivery time",
+        "delivery time",
+        "days to deliver",
+        "shipping time",
+        "lead time"
+      ]
+    },
+    {
+      "name": "average_delivery_delay_days",
+      "label": "Average delivery delay vs estimate",
+      "definition": "Mean of delivered date minus estimated delivery date, in whole calendar days, for delivered orders. Positive = late, negative = early; Olist deliveries average about 12 days early.",
+      "unit": "days",
+      "aliases": [
+        "delivery delay",
+        "days late",
+        "days early",
+        "delay vs estimate",
+        "actual vs estimated delivery",
+        "earliness vs estimated date"
+      ]
+    },
+    {
+      "name": "repeat_customer_rate",
+      "label": "Repeat customer rate",
+      "definition": "Share of customers with at least one delivered order who have at least two delivered orders.",
+      "unit": "ratio",
+      "aliases": [
+        "repeat customer rate",
+        "repeat purchase rate",
+        "returning customer rate",
+        "retention rate"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "name": "orders",
+      "description": "Order header with status, dates, delivery outcome, money totals and the order's latest review. The main table for order-level questions.",
+      "grain": "One row per order.",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "text",
+          "description": "Order identifier."
+        },
+        {
+          "name": "customer_unique_id",
+          "type": "text",
+          "description": "The real customer who placed the order. Use for any customer counting."
+        },
+        {
+          "name": "customer_city",
+          "type": "text",
+          "description": "Customer city at the time of this order (lowercase)."
+        },
+        {
+          "name": "customer_state",
+          "type": "text",
+          "description": "Customer state code at the time of this order."
+        },
+        {
+          "name": "order_status",
+          "type": "text",
+          "description": "Order lifecycle status."
+        },
+        {
+          "name": "is_delivered",
+          "type": "boolean",
+          "description": "True when order_status = 'delivered'."
+        },
+        {
+          "name": "is_canceled",
+          "type": "boolean",
+          "description": "True when order_status = 'canceled'. Does not include 'unavailable'."
+        },
+        {
+          "name": "is_revenue_order",
+          "type": "boolean",
+          "description": "True when the order counts toward revenue: status is not canceled or unavailable and the order has items."
+        },
+        {
+          "name": "purchased_at",
+          "type": "timestamp",
+          "description": "When the customer placed the order."
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "description": "Calendar date of purchased_at."
+        },
+        {
+          "name": "purchase_month",
+          "type": "date",
+          "description": "First day of the purchase month. Use for monthly trends."
+        },
+        {
+          "name": "approved_at",
+          "type": "timestamp",
+          "description": "When payment was approved. NULL for 160 orders."
+        },
+        {
+          "name": "delivered_to_carrier_at",
+          "type": "timestamp",
+          "description": "When the order was handed to the carrier."
+        },
+        {
+          "name": "delivered_to_customer_at",
+          "type": "timestamp",
+          "description": "When the customer received the order."
+        },
+        {
+          "name": "estimated_delivery_date",
+          "type": "date",
+          "description": "Delivery date promised to the customer at purchase."
+        },
+        {
+          "name": "delivery_status",
+          "type": "text",
+          "description": "Delivery outcome versus the promised date, compared by calendar date."
+        },
+        {
+          "name": "is_late",
+          "type": "boolean",
+          "description": "True when delivered after the estimated delivery date. NULL unless delivered with a delivery date."
+        },
+        {
+          "name": "delivery_delay_days",
+          "type": "integer",
+          "description": "Delivered date minus estimated date in whole days (positive = late, negative = early). Use it for actual vs estimated delivery. NULL unless delivered with a delivery date."
+        },
+        {
+          "name": "delivery_days",
+          "type": "numeric",
+          "description": "Days from purchase to customer delivery (2 decimals). NULL unless delivered with a delivery date."
+        },
+        {
+          "name": "item_count",
+          "type": "integer",
+          "description": "Number of items (units) on the order. 0 for orders without items."
+        },
+        {
+          "name": "product_count",
+          "type": "integer",
+          "description": "Number of distinct products on the order."
+        },
+        {
+          "name": "seller_count",
+          "type": "integer",
+          "description": "Number of distinct sellers on the order."
+        },
+        {
+          "name": "item_price_total",
+          "type": "numeric",
+          "description": "Sum of item prices on the order regardless of status. Excludes freight."
+        },
+        {
+          "name": "freight_total",
+          "type": "numeric",
+          "description": "Sum of freight charged on the order's items."
+        },
+        {
+          "name": "order_total_value",
+          "type": "numeric",
+          "description": "item_price_total + freight_total."
+        },
+        {
+          "name": "revenue",
+          "type": "numeric",
+          "description": "Item price total for revenue orders; NULL otherwise. SUM/AVG need no extra filter."
+        },
+        {
+          "name": "payment_count",
+          "type": "integer",
+          "description": "Number of payment records (an order can be paid in several parts)."
+        },
+        {
+          "name": "payment_total",
+          "type": "numeric",
+          "description": "Sum of payment values. NULL for the one order with no payment record."
+        },
+        {
+          "name": "max_installments",
+          "type": "integer",
+          "description": "Highest number of installments across the order's payments."
+        },
+        {
+          "name": "primary_payment_type",
+          "type": "text",
+          "description": "Payment method carrying the largest share of the order's payment value."
+        },
+        {
+          "name": "review_count",
+          "type": "integer",
+          "description": "Number of review records for the order."
+        },
+        {
+          "name": "has_review",
+          "type": "boolean",
+          "description": "True when the order has at least one review."
+        },
+        {
+          "name": "review_score",
+          "type": "integer",
+          "description": "Score 1-5 of the order's latest review. NULL when not reviewed."
+        },
+        {
+          "name": "review_has_comment",
+          "type": "boolean",
+          "description": "True when the latest review includes a written comment."
+        },
+        {
+          "name": "review_created_date",
+          "type": "date",
+          "description": "Date the latest review survey was sent."
+        },
+        {
+          "name": "review_answered_at",
+          "type": "timestamp",
+          "description": "When the latest review was answered."
+        }
+      ]
+    },
+    {
+      "name": "order_items",
+      "description": "Individual items sold, with product category, seller and order context. Use for product, unit and item-level price questions.",
+      "grain": "One row per order item (order_id, order_item_id). An order with 3 units has 3 rows.",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "text",
+          "description": "Order identifier."
+        },
+        {
+          "name": "order_item_id",
+          "type": "integer",
+          "description": "Item sequence number within the order (1, 2, ...)."
+        },
+        {
+          "name": "product_id",
+          "type": "text",
+          "description": "Product identifier."
+        },
+        {
+          "name": "product_category",
+          "type": "text",
+          "description": "English product category ('uncategorized' when the product has none)."
+        },
+        {
+          "name": "seller_id",
+          "type": "text",
+          "description": "Seller who sold this item."
+        },
+        {
+          "name": "seller_city",
+          "type": "text",
+          "description": "Seller city (lowercase)."
+        },
+        {
+          "name": "seller_state",
+          "type": "text",
+          "description": "Seller state code."
+        },
+        {
+          "name": "shipping_limit_at",
+          "type": "timestamp",
+          "description": "Deadline for the seller to hand the item to the carrier."
+        },
+        {
+          "name": "price",
+          "type": "numeric",
+          "description": "Item price, excluding freight."
+        },
+        {
+          "name": "freight_value",
+          "type": "numeric",
+          "description": "Freight charged for this item."
+        },
+        {
+          "name": "item_total_value",
+          "type": "numeric",
+          "description": "price + freight_value."
+        },
+        {
+          "name": "revenue",
+          "type": "numeric",
+          "description": "price when the order is a revenue order; NULL otherwise."
+        },
+        {
+          "name": "order_status",
+          "type": "text",
+          "description": "Status of the parent order."
+        },
+        {
+          "name": "is_delivered",
+          "type": "boolean",
+          "description": "Parent order is delivered."
+        },
+        {
+          "name": "is_canceled",
+          "type": "boolean",
+          "description": "Parent order is canceled."
+        },
+        {
+          "name": "is_revenue_order",
+          "type": "boolean",
+          "description": "Parent order counts toward revenue."
+        },
+        {
+          "name": "purchased_at",
+          "type": "timestamp",
+          "description": "Parent order purchase timestamp."
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "description": "Parent order purchase date."
+        },
+        {
+          "name": "purchase_month",
+          "type": "date",
+          "description": "First day of the parent order's purchase month."
+        },
+        {
+          "name": "customer_unique_id",
+          "type": "text",
+          "description": "Real customer who bought the item."
+        },
+        {
+          "name": "customer_state",
+          "type": "text",
+          "description": "Customer state code at the time of the order."
+        }
+      ]
+    },
+    {
+      "name": "order_sellers",
+      "description": "Each seller's part of an order. Use for seller performance over time or by region (revenue, delivery, reviews by seller).",
+      "grain": "One row per (order_id, seller_id).",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "text",
+          "description": "Order identifier."
+        },
+        {
+          "name": "seller_id",
+          "type": "text",
+          "description": "Seller identifier."
+        },
+        {
+          "name": "seller_city",
+          "type": "text",
+          "description": "Seller city (lowercase)."
+        },
+        {
+          "name": "seller_state",
+          "type": "text",
+          "description": "Seller state code."
+        },
+        {
+          "name": "item_count",
+          "type": "integer",
+          "description": "Items this seller sold on the order."
+        },
+        {
+          "name": "item_price_total",
+          "type": "numeric",
+          "description": "Price of this seller's items on the order, all statuses."
+        },
+        {
+          "name": "freight_total",
+          "type": "numeric",
+          "description": "Freight on this seller's items."
+        },
+        {
+          "name": "revenue",
+          "type": "numeric",
+          "description": "This seller's item price total for revenue orders; NULL otherwise."
+        },
+        {
+          "name": "order_seller_count",
+          "type": "integer",
+          "description": "Number of sellers on the whole order."
+        },
+        {
+          "name": "order_status",
+          "type": "text",
+          "description": "Order status."
+        },
+        {
+          "name": "is_delivered",
+          "type": "boolean",
+          "description": "Order is delivered."
+        },
+        {
+          "name": "is_canceled",
+          "type": "boolean",
+          "description": "Order is canceled."
+        },
+        {
+          "name": "is_revenue_order",
+          "type": "boolean",
+          "description": "Order counts toward revenue."
+        },
+        {
+          "name": "purchased_at",
+          "type": "timestamp",
+          "description": "Order purchase timestamp."
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "description": "Order purchase date."
+        },
+        {
+          "name": "purchase_month",
+          "type": "date",
+          "description": "First day of the order's purchase month."
+        },
+        {
+          "name": "customer_unique_id",
+          "type": "text",
+          "description": "Real customer on the order."
+        },
+        {
+          "name": "customer_state",
+          "type": "text",
+          "description": "Customer state code at the time of the order."
+        },
+        {
+          "name": "delivery_status",
+          "type": "text",
+          "description": "Order delivery outcome (see orders.delivery_status)."
+        },
+        {
+          "name": "is_late",
+          "type": "boolean",
+          "description": "Order delivered after the estimated date; NULL if not comparable."
+        },
+        {
+          "name": "delivery_days",
+          "type": "numeric",
+          "description": "Order purchase-to-delivery days; NULL if not comparable."
+        },
+        {
+          "name": "delivery_delay_days",
+          "type": "integer",
+          "description": "Order delivered minus estimated date in whole days (positive = late, negative = early); NULL if not comparable."
+        },
+        {
+          "name": "has_review",
+          "type": "boolean",
+          "description": "Order has a review."
+        },
+        {
+          "name": "review_score",
+          "type": "integer",
+          "description": "Order's latest review score; NULL when not reviewed."
+        }
+      ]
+    },
+    {
+      "name": "order_categories",
+      "description": "Each product category's part of an order. Use for category performance over time or by region (revenue, delivery, reviews by category).",
+      "grain": "One row per (order_id, product_category).",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "text",
+          "description": "Order identifier."
+        },
+        {
+          "name": "product_category",
+          "type": "text",
+          "description": "English product category ('uncategorized' when unknown)."
+        },
+        {
+          "name": "item_count",
+          "type": "integer",
+          "description": "Items in this category on the order."
+        },
+        {
+          "name": "item_price_total",
+          "type": "numeric",
+          "description": "Price of this category's items on the order, all statuses."
+        },
+        {
+          "name": "freight_total",
+          "type": "numeric",
+          "description": "Freight on this category's items."
+        },
+        {
+          "name": "revenue",
+          "type": "numeric",
+          "description": "This category's item price total for revenue orders; NULL otherwise."
+        },
+        {
+          "name": "order_category_count",
+          "type": "integer",
+          "description": "Number of distinct categories on the whole order."
+        },
+        {
+          "name": "order_status",
+          "type": "text",
+          "description": "Order status."
+        },
+        {
+          "name": "is_delivered",
+          "type": "boolean",
+          "description": "Order is delivered."
+        },
+        {
+          "name": "is_canceled",
+          "type": "boolean",
+          "description": "Order is canceled."
+        },
+        {
+          "name": "is_revenue_order",
+          "type": "boolean",
+          "description": "Order counts toward revenue."
+        },
+        {
+          "name": "purchased_at",
+          "type": "timestamp",
+          "description": "Order purchase timestamp."
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "description": "Order purchase date."
+        },
+        {
+          "name": "purchase_month",
+          "type": "date",
+          "description": "First day of the order's purchase month."
+        },
+        {
+          "name": "customer_unique_id",
+          "type": "text",
+          "description": "Real customer on the order."
+        },
+        {
+          "name": "customer_state",
+          "type": "text",
+          "description": "Customer state code at the time of the order."
+        },
+        {
+          "name": "delivery_status",
+          "type": "text",
+          "description": "Order delivery outcome (see orders.delivery_status)."
+        },
+        {
+          "name": "is_late",
+          "type": "boolean",
+          "description": "Order delivered after the estimated date; NULL if not comparable."
+        },
+        {
+          "name": "delivery_days",
+          "type": "numeric",
+          "description": "Order purchase-to-delivery days; NULL if not comparable."
+        },
+        {
+          "name": "delivery_delay_days",
+          "type": "integer",
+          "description": "Order delivered minus estimated date in whole days (positive = late, negative = early); NULL if not comparable."
+        },
+        {
+          "name": "has_review",
+          "type": "boolean",
+          "description": "Order has a review."
+        },
+        {
+          "name": "review_score",
+          "type": "integer",
+          "description": "Order's latest review score; NULL when not reviewed."
+        }
+      ]
+    },
+    {
+      "name": "order_payments",
+      "description": "Individual payment records. Use for payment method and installment questions.",
+      "grain": "One row per payment record (order_id, payment_sequential).",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "text",
+          "description": "Order identifier."
+        },
+        {
+          "name": "payment_sequential",
+          "type": "integer",
+          "description": "Sequence number of the payment within the order."
+        },
+        {
+          "name": "payment_type",
+          "type": "text",
+          "description": "Payment method."
+        },
+        {
+          "name": "payment_installments",
+          "type": "integer",
+          "description": "Number of installments chosen."
+        },
+        {
+          "name": "payment_value",
+          "type": "numeric",
+          "description": "Amount of this payment."
+        },
+        {
+          "name": "order_status",
+          "type": "text",
+          "description": "Status of the paid order."
+        },
+        {
+          "name": "is_revenue_order",
+          "type": "boolean",
+          "description": "The paid order counts toward revenue."
+        },
+        {
+          "name": "purchased_at",
+          "type": "timestamp",
+          "description": "Order purchase timestamp."
+        },
+        {
+          "name": "purchase_date",
+          "type": "date",
+          "description": "Order purchase date."
+        },
+        {
+          "name": "purchase_month",
+          "type": "date",
+          "description": "First day of the order's purchase month."
+        },
+        {
+          "name": "customer_unique_id",
+          "type": "text",
+          "description": "Real customer who paid."
+        },
+        {
+          "name": "customer_state",
+          "type": "text",
+          "description": "Customer state code at the time of the order."
+        }
+      ]
+    },
+    {
+      "name": "products",
+      "description": "One row per product with its category and physical attributes. Join from order_items on product_id for product attributes of items sold.",
+      "grain": "One row per product (product_id).",
+      "columns": [
+        {
+          "name": "product_id",
+          "type": "text",
+          "description": "Product identifier."
+        },
+        {
+          "name": "product_category",
+          "type": "text",
+          "description": "English product category ('uncategorized' for 610 products without one)."
+        },
+        {
+          "name": "category_translation_source",
+          "type": "text",
+          "description": "Where the English category name comes from."
+        },
+        {
+          "name": "product_name_length",
+          "type": "integer",
+          "description": "Characters in the product name. NULL when unknown."
+        },
+        {
+          "name": "product_description_length",
+          "type": "integer",
+          "description": "Characters in the product description. NULL when unknown."
+        },
+        {
+          "name": "photo_count",
+          "type": "integer",
+          "description": "Number of product photos. NULL when unknown."
+        },
+        {
+          "name": "weight_g",
+          "type": "integer",
+          "description": "Weight in grams."
+        },
+        {
+          "name": "length_cm",
+          "type": "integer",
+          "description": "Length in centimetres."
+        },
+        {
+          "name": "height_cm",
+          "type": "integer",
+          "description": "Height in centimetres."
+        },
+        {
+          "name": "width_cm",
+          "type": "integer",
+          "description": "Width in centimetres."
+        }
+      ]
+    }
+  ]
+}

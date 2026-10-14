@@ -41,6 +41,8 @@ class CompareOptions:
     allow_extra_columns: bool = True
     # rates: also accept a generated column that is the reference value x 100
     allow_percent: bool = False
+    # two-sided quantities (delay vs lead time): also accept the reference value x -1
+    allow_negated: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +160,9 @@ def compare(expected: Table, actual: Table, options: CompareOptions | None = Non
     ref = [tuple(normalise(v) for v in row) for row in expected.rows]
     gen = [tuple(normalise(v) for v in row) for row in actual.rows]
 
-    scales = (Decimal(1), Decimal("0.01")) if options.allow_percent else (Decimal(1),)
+    signs = (Decimal(1), Decimal(-1)) if options.allow_negated else (Decimal(1),)
+    units = (Decimal(1), Decimal("0.01")) if options.allow_percent else (Decimal(1),)
+    scales = tuple(sign * unit for sign in signs for unit in units)
     views = {sc: [tuple(_scaled(c, sc) for c in row) for row in gen] for sc in scales}
 
     # candidate generated columns for each reference column, judged column by column

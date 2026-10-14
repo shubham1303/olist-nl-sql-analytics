@@ -88,6 +88,22 @@ def test_percent_form_only_when_allowed() -> None:
     assert not compare(ref, table("rate", (Decimal("0.065"),)), rate).match
 
 
+def test_negated_form_only_when_allowed() -> None:
+    ref = table("lead", (Decimal("43.40"),), (Decimal("23.01"),))
+    delay = table("delay", (Decimal("-43.40"),), (Decimal("-23.01"),))
+    either = CompareOptions(allow_negated=True)
+    assert compare(ref, delay, either).match
+    assert not compare(ref, delay).match
+    assert compare(ref, ref, either).match
+    # one column at one scale: a mix of signs is not a match
+    mixed = table("v", (Decimal("43.40"),), (Decimal("-23.01"),))
+    assert not compare(ref, mixed, either).match
+    # combines with percent form
+    rate = table("r", (Decimal("0.05"),))
+    both = CompareOptions(allow_negated=True, allow_percent=True)
+    assert compare(rate, table("r", (Decimal("-5"),)), both).match
+
+
 @pytest.mark.parametrize(
     "generated",
     [date(2017, 1, 1), datetime(2017, 1, 1), "2017-01", "2017-01-01T00:00:00"],

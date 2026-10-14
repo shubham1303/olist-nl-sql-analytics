@@ -28,7 +28,7 @@ Split = Literal["dev", "test"]
 SPLITS: tuple[Split, ...] = ("dev", "test")
 Difficulty = Literal["easy", "medium", "hard"]
 DIFFICULTIES: tuple[Difficulty, ...] = ("easy", "medium", "hard")
-EXPECTED_SIZES: dict[Split, int] = {"dev": 34, "test": 23}  # ADR 0018
+EXPECTED_SIZES: dict[Split, int] = {"dev": 35, "test": 23}  # ADR 0018, + dev-035 (Phase 9)
 
 # Areas from ADR 0006. Every item has at least one.
 AREAS = (

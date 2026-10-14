@@ -143,3 +143,66 @@ commit `b007d43`:
 - dev-034 passed on its first attempt in all three runs. Before the validator fix, 3 of
   6 re-asks had a rejected first attempt. That fits the fix, but three runs are too few
   to credit it.
+
+## Phase 9: per-seller statistics, delay metric, prompt v3, database probe (2026-10-14)
+
+**Why.** These changes come from 15 questions the owner asked on the live site:
+- **Q14**, seller lead time: rejected 3/3 as `FANOUT_RISK`. This was a false rejection.
+  The model averaged a per-order CTE column per `seller_id` after joining
+  `order_sellers`, and the answer was exact.
+- **Q15**, late vs on-time review scores "within the same category and state":
+  answered with a 679-row table and no conclusion.
+- **Q14** also missed `delivery_delay_days`.
+
+**Changes.**
+- **Validator** ([ADR 0014 amendment](../docs/adr/0014-sql-validation-design.md)):
+  - Now allowed: `AVG`, `COUNT`, `STDDEV` and `PERCENTILE_CONT` of a one-side value,
+    when the join's many side is unique on its join keys plus its `GROUP BY` columns.
+  - Still rejected: `SUM`, windowed and `DISTINCT` forms, columns the bridge carries
+    per seller, and non-unique groupings.
+  - Tests: 11 new corpus cases. The integration suite shows the accepted form equals
+    the bridge-only answer row for row, and the rejected `SUM` overstates the total.
+- **Catalog:**
+  - New metric `average_delivery_delay_days`: −11.8759 days, cross-checked against
+    `raw.orders`.
+  - Every `delivery_delay_days` column now states its sign.
+  - "lead time" stays an alias of `average_delivery_days`, the owner's choice.
+- **Prompt v3:** an association question with controls ("within", "controlling
+  for") answers with one summary row. That row gives the groups compared, the share of
+  groups each way, and the order-weighted difference. On Q15 (local, not a benchmark
+  item) it now returns: 257 groups, late orders lower in 100%, a −1.89-star weighted
+  gap.
+- **API:** `/query` probes the database with `SELECT 1` before the model call, so a
+  paused Aurora costs no Bedrock call. This is on for the deployed and local servers
+  and off for evaluation runs.
+
+**New baseline under `allow_negated`** (before, clean `05621fd`, prompt v2):
+- Runs: [r1](results/20261014T010859Z_dev_us-anthropic-claude-sonnet-4-6_r1of3.md),
+  [r2](results/20261014T011029Z_dev_us-anthropic-claude-sonnet-4-6_r2of3.md),
+  [r3](results/20261014T011203Z_dev_us-anthropic-claude-sonnet-4-6_r3of3.md).
+- Scores: **35, 35, 34**.
+- dev-035 is now correct in every run.
+- The one miss is dev-017 in r3. The model filtered to February in the same `SELECT`
+  as `LAG`, so February came out NULL.
+
+**After** (clean `a6b9f07`, prompt v3):
+- Runs: [r1](results/20261014T012433Z_dev_us-anthropic-claude-sonnet-4-6_r1of3.md),
+  [r3](results/20261014T021632Z_dev_us-anthropic-claude-sonnet-4-6_r3of3.md),
+  [replacement](results/20261014T021835Z_dev_us-anthropic-claude-sonnet-4-6.md).
+- Scores: **35, 35, 35**.
+- [r2](results/20261014T012604Z_dev_us-anthropic-claude-sonnet-4-6_r2of3.md) scored 28. A local
+  network outage made one database query and six Bedrock calls fail with connection
+  errors (triaged). It is kept on record but left out of the comparison and replaced
+  by one extra run.
+
+**Reading.** `compare` reports "improvement" (mean 34.67 → 35.00, min 34 → 35). The
+only item that differs is dev-017 (2/3 → 3/3), which none of these changes targets,
+so I read it as **no regression**, not an improvement. The changes target question
+shapes the dev split doesn't contain: Q14's join, Q15's summary, and the paused-database
+cost.
+
+In two after-runs, dev-017's first attempt self-joined the monthly CTE on
+`prev.purchase_month + INTERVAL '1 month'`. That was rejected as `INVALID_JOIN_PATH`
+(computed join keys are a documented limitation), and the one repair fixed it both
+times.
+

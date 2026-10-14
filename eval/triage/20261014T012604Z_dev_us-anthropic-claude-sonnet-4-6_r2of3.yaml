@@ -1,0 +1,21 @@
+dev-029:
+  category: execution_error
+  note: "Local network outage during the run: the database connection dropped (QUERY_FAILED) at the same time as the Bedrock calls below. Infrastructure, not model behaviour; this run is left out of the comparison and replaced by 20261014T021835Z."
+dev-030:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."
+dev-031:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."
+dev-032:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."
+dev-033:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."
+dev-034:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."
+dev-035:
+  category: generation_failure
+  note: "Network outage: Bedrock call failed with a connection error. Run replaced."

@@ -76,7 +76,7 @@ relations:
         description: Delivery outcome versus the promised date, compared by calendar date.
         values: [early, on_time, late, not_delivered, missing_delivery_date]
       - {name: is_late, type: boolean, description: "True when delivered after the estimated delivery date. NULL unless delivered with a delivery date."}
-      - {name: delivery_delay_days, type: integer, description: "Delivered date minus estimated date in whole days (positive = late). NULL unless delivered with a delivery date."}
+      - {name: delivery_delay_days, type: integer, description: "Delivered date minus estimated date in whole days (positive = late, negative = early). Use it for actual vs estimated delivery. NULL unless delivered with a delivery date."}
       - {name: delivery_days, type: numeric, description: "Days from purchase to customer delivery (2 decimals). NULL unless delivered with a delivery date."}
       - {name: item_count, type: integer, description: "Number of items (units) on the order. 0 for orders without items."}
       - {name: product_count, type: integer, description: "Number of distinct products on the order."}
@@ -168,7 +168,7 @@ relations:
       - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status).", attributed: true}
       - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable.", attributed: true}
       - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable.", attributed: true}
-      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable.", attributed: true}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in whole days (positive = late, negative = early); NULL if not comparable.", attributed: true}
       - {name: has_review, type: boolean, description: "Order has a review.", attributed: true}
       - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed.", attributed: true}
 
@@ -204,7 +204,7 @@ relations:
       - {name: delivery_status, type: text, description: "Order delivery outcome (see orders.delivery_status).", attributed: true}
       - {name: is_late, type: boolean, description: "Order delivered after the estimated date; NULL if not comparable.", attributed: true}
       - {name: delivery_days, type: numeric, description: "Order purchase-to-delivery days; NULL if not comparable.", attributed: true}
-      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in days; NULL if not comparable.", attributed: true}
+      - {name: delivery_delay_days, type: integer, description: "Order delivered minus estimated date in whole days (positive = late, negative = early); NULL if not comparable.", attributed: true}
       - {name: has_review, type: boolean, description: "Order has a review.", attributed: true}
       - {name: review_score, type: integer, description: "Order's latest review score; NULL when not reviewed.", attributed: true}
 
@@ -510,6 +510,19 @@ metrics:
     caveats:
       - Delivery times are right-skewed; the median (percentile_cont(0.5)) is often more representative.
     aliases: [average delivery time, delivery time, days to deliver, shipping time, lead time]
+
+  - name: average_delivery_delay_days
+    label: Average delivery delay vs estimate
+    definition: Mean of delivered date minus estimated delivery date, in whole calendar days,
+      for delivered orders. Positive = late, negative = early; Olist deliveries average
+      about 12 days early.
+    relation: orders
+    expression: AVG(delivery_delay_days)
+    unit: days
+    exclusions: [Orders not delivered., Delivered orders missing a delivery date (8).]
+    caveats:
+      - Negate it for "days early" or lead time relative to the estimate.
+    aliases: [delivery delay, days late, days early, delay vs estimate, actual vs estimated delivery, earliness vs estimated date]
 
   - name: repeat_customer_rate
     label: Repeat customer rate

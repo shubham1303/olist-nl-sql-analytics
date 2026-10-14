@@ -15,8 +15,8 @@ export function EmptyState({ disabled, onAsk, onOpenCatalog }: Props) {
       <div className="hero">
         <h2>Ask the Olist data a question</h2>
         <p className="muted">
-          Claude writes the SQL, a validator checks it for fan-out and unsafe constructs, and a read-only
-          database role runs it. Every answer shows the SQL, the metrics it used and any assumptions.
+          Ask in plain English about orders, revenue, products, sellers, customers, delivery or reviews. Every
+          answer shows the SQL that ran, the metrics it used and any assumptions.
         </p>
       </div>
       <div className="topic-grid">

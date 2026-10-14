@@ -68,7 +68,8 @@ def main(argv: list[str] | None = None) -> int:
         model = BedrockModelClient(settings)
     validator = SqlValidator.from_catalog(settings=settings)
     try:
-        api = Api(settings, NlSqlPipeline(model, validator, executor, settings), executor)
+        pipeline = NlSqlPipeline(model, validator, executor, settings, probe_database=True)
+        api = Api(settings, pipeline, executor)
         server = serve(api, args.host, args.port)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)

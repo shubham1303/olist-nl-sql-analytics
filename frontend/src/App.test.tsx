@@ -277,9 +277,63 @@ describe('results', () => {
     render(<App />)
     await enterCode()
     await ask('Show sellers')
-    expect(screen.getByRole('heading', { name: "The generated SQL didn't pass the safety checks" })).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Use only the listed relations.')
+    expect(screen.getByRole('heading', { name: "I couldn't find a safe way to answer that" })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent("That needs data this app doesn't have access to. Nothing was run.")
+    // the technical detail is still there, one click away
+    expect(screen.getByText('Technical details')).toBeInTheDocument()
+    expect(screen.getByText('UNAPPROVED_RELATION', { selector: 'code' })).toBeInTheDocument()
+    expect(screen.getByText(/Use only the listed relations\./)).toBeInTheDocument()
     expect(screen.getByText('Generated SQL (not run)')).toBeInTheDocument()
+  })
+
+  it('a request that is not a data question gets a gentle answer and questions that work', async () => {
+    const reason = 'The input is a greeting, not a question about the Olist data.'
+    on(
+      '/query',
+      json(200, answer({ question: 'hello', status: 'unanswerable', interpretation: reason, validated_sql: null, generated_sql: null, columns: [], rows: [], row_count: 0 })),
+      json(200, answer()),
+    )
+    render(<App />)
+    await enterCode()
+    await ask('hello')
+    expect(screen.getByRole('heading', { name: "That's not something I can answer here" })).toBeInTheDocument()
+    expect(screen.getByText(/I can only read the data, never change it\./)).toBeInTheDocument()
+    expect(screen.getByText(reason)).toBeInTheDocument()
+    expect(screen.queryByText('Technical details')).not.toBeInTheDocument() // nothing technical to show
+    fireEvent.click(screen.getByRole('button', { name: 'How many orders are in the dataset?' }))
+    await flush()
+    expect(JSON.parse(String(calls.at(-1)!.init?.body))).toEqual({ question: 'How many orders are in the dataset?' })
+  })
+
+  it('a write request is explained as read-only, without the jargon', async () => {
+    on(
+      '/query',
+      json(200, answer({
+        question: 'delete all canceled orders', status: 'rejected', validated_sql: null, generated_sql: 'DELETE FROM orders',
+        columns: [], rows: [], row_count: 0,
+        error: { stage: 'validation', code: 'WRITE_OPERATION', message: 'Only SELECT statements are allowed.' },
+      })),
+    )
+    render(<App />)
+    await enterCode()
+    await ask('delete all canceled orders')
+    expect(screen.getByRole('status')).toHaveTextContent("This app only reads data, so it can't add, change or delete anything.")
+  })
+
+  it('a temporary failure offers Try again, which asks the same question', async () => {
+    on(
+      '/query',
+      json(200, answer({ status: 'generation_failed', validated_sql: null, generated_sql: null, columns: [], rows: [], row_count: 0, error: { stage: 'generation', code: 'throttled', message: 'Rate exceeded' } })),
+      json(200, answer()),
+    )
+    render(<App />)
+    await enterCode()
+    await ask('What was total revenue?')
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong while writing the query')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await flush()
+    expect(calls.filter((c) => c.path === '/query')).toHaveLength(2)
+    expect(screen.getByText('13.5M')).toBeInTheDocument()
   })
 
   it('a question over 500 characters cannot be sent', async () => {

@@ -18,9 +18,10 @@ by about a day and marks the current month as estimated. The stack has existed s
 | **Total** | **$3.63** | 94% of it is the model |
 
 The account also shows a few cents for Cognito, Glue and DynamoDB. Those belong to
-another project in the same account and are left out. The resources here carry a
-`Project` tag, but it isn't activated as a cost-allocation tag, so the split is by
-service.
+another project in the same account and are left out. These figures are split by
+service. Since 2026-10-15 the `Project` tag is an active cost-allocation tag (Terraform:
+`aws_ce_cost_allocation_tag.project`), backfilled from 2026-10-01, so the project can
+be filtered directly with `Project = olist-nlsql` (see below).
 
 ## Per question
 
@@ -89,6 +90,18 @@ ce.get_cost_and_usage(
     GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
 )
 ```
+
+For this project only, filter by its tag instead of picking services:
+
+```python
+Filter={"And": [
+    {"Dimensions": {"Key": "RECORD_TYPE", "Values": ["Usage"]}},
+    {"Tags": {"Key": "Project", "Values": ["olist-nlsql"]}},
+]}
+```
+
+Bedrock calls aren't tagged resources, so model usage shows up untagged. Count it by
+service (Claude Sonnet 4.6), as in the table above.
 
 Token counts per question are in every run record under `eval/results/`
 (`input_tokens` there includes cached input).

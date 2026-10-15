@@ -1,0 +1,1549 @@
+{
+  "run_id": "20261015T222621Z_dev_us-anthropic-claude-sonnet-4-6_r2of3",
+  "split": "dev",
+  "started_at": "2026-10-15T22:26:21+00:00",
+  "finished_at": "2026-10-15T22:27:51+00:00",
+  "git_commit": "43fbd65889906ac905abff5cde7d37a76cd202f3",
+  "git_dirty": false,
+  "model_id": "us.anthropic.claude-sonnet-4-6",
+  "model_settings": {
+    "region": "us-east-1",
+    "effort": "medium",
+    "thinking": "disabled",
+    "max_output_tokens": 4096,
+    "timeout_seconds": 60
+  },
+  "prompt_version": "v3",
+  "benchmark_hash": "f4a28310824490ca30be0a9b65eb765a3d83f89ff9ce273195914f5cc5f395ca",
+  "checkpoint": null,
+  "fake_model": false,
+  "items": [
+    {
+      "id": "dev-001",
+      "question": "How many orders are in the dataset?",
+      "difficulty": "easy",
+      "tags": [
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7043,
+      "cache_read_tokens": 6613,
+      "output_tokens": 132,
+      "total_ms": 1310.45,
+      "model_ms": 1223.23,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the total number of orders in the dataset, regardless of status.",
+      "assumptions": [],
+      "generated_sql": "SELECT COUNT(*) AS order_count FROM analytics.orders",
+      "validated_sql": "SELECT\n  COUNT(*) AS order_count\nFROM analytics.orders\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(*) AS orders FROM orders",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT COUNT(*) AS order_count FROM analytics.orders"
+        }
+      ]
+    },
+    {
+      "id": "dev-002",
+      "question": "What was total merchandise revenue in 2017?",
+      "difficulty": "easy",
+      "tags": [
+        "aggregation",
+        "filtering",
+        "time_series"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7045,
+      "cache_read_tokens": 6613,
+      "output_tokens": 166,
+      "total_ms": 1659.16,
+      "model_ms": 1498.45,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Total merchandise revenue for orders purchased in the calendar year 2017.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    SUM(revenue) AS total_revenue\nFROM analytics.orders\nWHERE purchased_at >= '2017-01-01'\n  AND purchased_at < '2018-01-01'",
+      "validated_sql": "SELECT\n  SUM(revenue) AS total_revenue\nFROM analytics.orders\nWHERE\n  purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'\nLIMIT 1001",
+      "reference_sql": "SELECT SUM(revenue) AS revenue\nFROM orders\nWHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    SUM(revenue) AS total_revenue\nFROM analytics.orders\nWHERE purchased_at >= '2017-01-01'\n  AND purchased_at < '2018-01-01'"
+        }
+      ]
+    },
+    {
+      "id": "dev-003",
+      "question": "How many orders were canceled?",
+      "difficulty": "easy",
+      "tags": [
+        "filtering",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7041,
+      "cache_read_tokens": 6613,
+      "output_tokens": 141,
+      "total_ms": 1503.14,
+      "model_ms": 1421.38,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the total number of orders with a canceled status.",
+      "assumptions": [],
+      "generated_sql": "SELECT COUNT(*) FILTER (WHERE is_canceled) AS canceled_order_count FROM analytics.orders",
+      "validated_sql": "SELECT\n  COUNT(*) FILTER(WHERE\n    is_canceled) AS canceled_order_count\nFROM analytics.orders\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(*) AS canceled_orders FROM orders WHERE is_canceled",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT COUNT(*) FILTER (WHERE is_canceled) AS canceled_order_count FROM analytics.orders"
+        }
+      ]
+    },
+    {
+      "id": "dev-004",
+      "question": "How many unique customers have placed an order?",
+      "difficulty": "easy",
+      "tags": [
+        "customer",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7044,
+      "cache_read_tokens": 6613,
+      "output_tokens": 140,
+      "total_ms": 1689.19,
+      "model_ms": 1502.52,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the number of distinct real customers who have placed at least one order.",
+      "assumptions": [],
+      "generated_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS customer_count FROM analytics.orders",
+      "validated_sql": "SELECT\n  COUNT(DISTINCT customer_unique_id) AS customer_count\nFROM analytics.orders\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS customers FROM orders",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT COUNT(DISTINCT customer_unique_id) AS customer_count FROM analytics.orders"
+        }
+      ]
+    },
+    {
+      "id": "dev-005",
+      "question": "What is the average review score across all reviewed orders?",
+      "difficulty": "easy",
+      "tags": [
+        "review",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7046,
+      "cache_read_tokens": 6613,
+      "output_tokens": 142,
+      "total_ms": 1508.23,
+      "model_ms": 1300.09,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "The average review score across all reviewed orders.",
+      "assumptions": [],
+      "generated_sql": "SELECT ROUND(AVG(review_score), 4) AS average_review_score\nFROM analytics.orders",
+      "validated_sql": "SELECT\n  ROUND(CAST(AVG(review_score) AS DECIMAL), 4) AS average_review_score\nFROM analytics.orders\nLIMIT 1001",
+      "reference_sql": "SELECT AVG(review_score) AS average_review_score FROM orders",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT ROUND(AVG(review_score), 4) AS average_review_score\nFROM analytics.orders"
+        }
+      ]
+    },
+    {
+      "id": "dev-006",
+      "question": "What is the overall late delivery rate?",
+      "difficulty": "easy",
+      "tags": [
+        "delivery",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7043,
+      "cache_read_tokens": 6613,
+      "output_tokens": 164,
+      "total_ms": 1520.89,
+      "model_ms": 1425.24,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What is the overall late delivery rate across all orders?",
+      "assumptions": [],
+      "generated_sql": "SELECT\n  (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM analytics.orders",
+      "validated_sql": "SELECT\n  CAST((\n    COUNT(*) FILTER(WHERE\n      is_late)\n  ) AS DECIMAL) / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM analytics.orders\nLIMIT 1001",
+      "reference_sql": "SELECT (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM orders",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n  (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM analytics.orders"
+        }
+      ]
+    },
+    {
+      "id": "dev-007",
+      "question": "How many orders were placed in each month of 2018?",
+      "difficulty": "medium",
+      "tags": [
+        "time_series",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7048,
+      "cache_read_tokens": 6613,
+      "output_tokens": 250,
+      "total_ms": 2664.18,
+      "model_ms": 2531.75,
+      "row_count": 10,
+      "truncated": false,
+      "interpretation": "Count the total number of orders placed in each month of 2018.",
+      "assumptions": [
+        "Months 2018-09 and 2018-10 are incomplete (only 20 orders total across both months), so those figures should be interpreted with caution."
+      ],
+      "generated_sql": "SELECT\n    TO_CHAR(o.purchase_month, 'YYYY-MM') AS month,\n    COUNT(*) AS order_count\nFROM analytics.orders o\nWHERE o.purchase_month >= '2018-01-01'\n  AND o.purchase_month < '2019-01-01'\nGROUP BY o.purchase_month\nORDER BY o.purchase_month",
+      "validated_sql": "SELECT\n  TO_CHAR(o.purchase_month, 'YYYY-MM') AS month,\n  COUNT(*) AS order_count\nFROM analytics.orders AS o\nWHERE\n  o.purchase_month >= '2018-01-01' AND o.purchase_month < '2019-01-01'\nGROUP BY\n  o.purchase_month\nORDER BY\n  o.purchase_month\nLIMIT 1001",
+      "reference_sql": "SELECT purchase_month, COUNT(*) AS orders\nFROM orders\nWHERE purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'\nGROUP BY purchase_month\nORDER BY purchase_month",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    TO_CHAR(o.purchase_month, 'YYYY-MM') AS month,\n    COUNT(*) AS order_count\nFROM analytics.orders o\nWHERE o.purchase_month >= '2018-01-01'\n  AND o.purchase_month < '2019-01-01'\nGROUP BY o.purchase_month\nORDER BY o.purchase_month"
+        }
+      ]
+    },
+    {
+      "id": "dev-008",
+      "question": "Which 5 product categories generated the most revenue?",
+      "difficulty": "medium",
+      "tags": [
+        "product_category",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7046,
+      "cache_read_tokens": 6613,
+      "output_tokens": 191,
+      "total_ms": 2057.41,
+      "model_ms": 1681.01,
+      "row_count": 5,
+      "truncated": false,
+      "interpretation": "Return the 5 product categories that generated the highest total merchandise revenue across all orders.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    oc.product_category,\n    SUM(oc.revenue) AS revenue\nFROM analytics.order_categories oc\nWHERE oc.is_revenue_order = TRUE\nGROUP BY oc.product_category\nORDER BY revenue DESC NULLS LAST\nLIMIT 5",
+      "validated_sql": "SELECT\n  oc.product_category,\n  SUM(oc.revenue) AS revenue\nFROM analytics.order_categories AS oc\nWHERE\n  oc.is_revenue_order = TRUE\nGROUP BY\n  oc.product_category\nORDER BY\n  revenue DESC NULLS LAST\nLIMIT 5",
+      "reference_sql": "SELECT product_category, SUM(revenue) AS revenue\nFROM order_items\nGROUP BY product_category\nORDER BY revenue DESC\nLIMIT 5",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    oc.product_category,\n    SUM(oc.revenue) AS revenue\nFROM analytics.order_categories oc\nWHERE oc.is_revenue_order = TRUE\nGROUP BY oc.product_category\nORDER BY revenue DESC NULLS LAST\nLIMIT 5"
+        }
+      ]
+    },
+    {
+      "id": "dev-009",
+      "question": "Which 10 customer states generated the most revenue?",
+      "difficulty": "medium",
+      "tags": [
+        "customer",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7046,
+      "cache_read_tokens": 6613,
+      "output_tokens": 187,
+      "total_ms": 1703.33,
+      "model_ms": 1434.67,
+      "row_count": 10,
+      "truncated": false,
+      "interpretation": "The 10 customer states that generated the most merchandise revenue, ranked from highest to lowest.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    o.customer_state,\n    SUM(o.revenue) AS total_revenue\nFROM analytics.orders o\nWHERE o.is_revenue_order\nGROUP BY o.customer_state\nORDER BY total_revenue DESC NULLS LAST\nLIMIT 10",
+      "validated_sql": "SELECT\n  o.customer_state,\n  SUM(o.revenue) AS total_revenue\nFROM analytics.orders AS o\nWHERE\n  o.is_revenue_order\nGROUP BY\n  o.customer_state\nORDER BY\n  total_revenue DESC NULLS LAST\nLIMIT 10",
+      "reference_sql": "SELECT customer_state, SUM(revenue) AS revenue\nFROM orders\nGROUP BY customer_state\nORDER BY revenue DESC\nLIMIT 10",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    o.customer_state,\n    SUM(o.revenue) AS total_revenue\nFROM analytics.orders o\nWHERE o.is_revenue_order\nGROUP BY o.customer_state\nORDER BY total_revenue DESC NULLS LAST\nLIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "dev-010",
+      "question": "How many orders included at least one payment of each payment type?",
+      "difficulty": "medium",
+      "tags": [
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7048,
+      "cache_read_tokens": 6613,
+      "output_tokens": 221,
+      "total_ms": 2433.1,
+      "model_ms": 2197.52,
+      "row_count": 5,
+      "truncated": false,
+      "interpretation": "Count the number of distinct orders that included at least one payment record of each payment type (boleto, credit_card, debit_card, not_defined, voucher).",
+      "assumptions": [
+        "'At least one payment of each payment type' is interpreted as: for each payment type, how many distinct orders had at least one payment record of that type."
+      ],
+      "generated_sql": "SELECT\n    payment_type,\n    COUNT(DISTINCT order_id) AS order_count\nFROM analytics.order_payments\nGROUP BY payment_type\nORDER BY order_count DESC",
+      "validated_sql": "SELECT\n  payment_type,\n  COUNT(DISTINCT order_id) AS order_count\nFROM analytics.order_payments\nGROUP BY\n  payment_type\nORDER BY\n  order_count DESC NULLS LAST\nLIMIT 1001",
+      "reference_sql": "SELECT payment_type, COUNT(DISTINCT order_id) AS orders\nFROM order_payments\nGROUP BY payment_type",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    payment_type,\n    COUNT(DISTINCT order_id) AS order_count\nFROM analytics.order_payments\nGROUP BY payment_type\nORDER BY order_count DESC"
+        }
+      ]
+    },
+    {
+      "id": "dev-011",
+      "question": "Which 5 customer states have the longest average delivery time?",
+      "difficulty": "medium",
+      "tags": [
+        "delivery",
+        "customer"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7048,
+      "cache_read_tokens": 6613,
+      "output_tokens": 236,
+      "total_ms": 2087.44,
+      "model_ms": 1951.23,
+      "row_count": 5,
+      "truncated": false,
+      "interpretation": "Identify the 5 customer states with the longest average delivery time (days from purchase to customer delivery) across all delivered orders with a delivery date.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    o.customer_state,\n    ROUND(AVG(o.delivery_days), 2) AS average_delivery_days,\n    COUNT(*) FILTER (WHERE o.delivery_days IS NOT NULL) AS delivered_order_count\nFROM analytics.orders o\nWHERE o.delivery_days IS NOT NULL\nGROUP BY o.customer_state\nORDER BY average_delivery_days DESC\nLIMIT 5",
+      "validated_sql": "SELECT\n  o.customer_state,\n  ROUND(CAST(AVG(o.delivery_days) AS DECIMAL), 2) AS average_delivery_days,\n  COUNT(*) FILTER(WHERE\n    o.delivery_days IS NOT NULL) AS delivered_order_count\nFROM analytics.orders AS o\nWHERE\n  o.delivery_days IS NOT NULL\nGROUP BY\n  o.customer_state\nORDER BY\n  average_delivery_days DESC NULLS LAST\nLIMIT 5",
+      "reference_sql": "SELECT customer_state, AVG(delivery_days) AS average_delivery_days\nFROM orders\nGROUP BY customer_state\nORDER BY average_delivery_days DESC\nLIMIT 5",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    o.customer_state,\n    ROUND(AVG(o.delivery_days), 2) AS average_delivery_days,\n    COUNT(*) FILTER (WHERE o.delivery_days IS NOT NULL) AS delivered_order_count\nFROM analytics.orders o\nWHERE o.delivery_days IS NOT NULL\nGROUP BY o.customer_state\nORDER BY average_delivery_days DESC\nLIMIT 5"
+        }
+      ]
+    },
+    {
+      "id": "dev-012",
+      "question": "Which 10 sellers had the highest revenue in 2018?",
+      "difficulty": "medium",
+      "tags": [
+        "seller",
+        "filtering"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7049,
+      "cache_read_tokens": 6613,
+      "output_tokens": 315,
+      "total_ms": 3453.11,
+      "model_ms": 3074.2,
+      "row_count": 10,
+      "truncated": false,
+      "interpretation": "Identify the 10 sellers with the highest total merchandise revenue from orders placed in 2018.",
+      "assumptions": [
+        "'2018' means orders with a purchase date from 2018-01-01 to 2018-12-31. Note that 2018-09 and 2018-10 have very few orders (only 20 total), so results are essentially complete through August 2018.",
+        "Revenue is merchandise revenue (item prices excluding freight) for non-canceled, non-unavailable orders with items."
+      ],
+      "generated_sql": "SELECT\n    os.seller_id,\n    SUM(os.revenue) AS total_revenue\nFROM analytics.order_sellers os\nWHERE os.purchase_date >= '2018-01-01'\n  AND os.purchase_date < '2019-01-01'\n  AND os.is_revenue_order\nGROUP BY os.seller_id\nORDER BY total_revenue DESC NULLS LAST\nLIMIT 10",
+      "validated_sql": "SELECT\n  os.seller_id,\n  SUM(os.revenue) AS total_revenue\nFROM analytics.order_sellers AS os\nWHERE\n  os.purchase_date >= '2018-01-01'\n  AND os.purchase_date < '2019-01-01'\n  AND os.is_revenue_order\nGROUP BY\n  os.seller_id\nORDER BY\n  total_revenue DESC NULLS LAST\nLIMIT 10",
+      "reference_sql": "SELECT seller_id, SUM(revenue) AS revenue\nFROM order_sellers\nWHERE is_revenue_order\n  AND purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'\nGROUP BY seller_id\nORDER BY revenue DESC\nLIMIT 10",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    os.seller_id,\n    SUM(os.revenue) AS total_revenue\nFROM analytics.order_sellers os\nWHERE os.purchase_date >= '2018-01-01'\n  AND os.purchase_date < '2019-01-01'\n  AND os.is_revenue_order\nGROUP BY os.seller_id\nORDER BY total_revenue DESC NULLS LAST\nLIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": "dev-013",
+      "question": "What is the average review score for each delivery status?",
+      "difficulty": "medium",
+      "tags": [
+        "review",
+        "delivery"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7046,
+      "cache_read_tokens": 6613,
+      "output_tokens": 201,
+      "total_ms": 1946.07,
+      "model_ms": 1751.56,
+      "row_count": 5,
+      "truncated": false,
+      "interpretation": "Return the average review score for each delivery status category across all orders.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    o.delivery_status,\n    ROUND(AVG(o.review_score), 4) AS average_review_score,\n    COUNT(o.review_score) AS reviewed_order_count\nFROM analytics.orders o\nGROUP BY o.delivery_status\nORDER BY average_review_score DESC NULLS LAST",
+      "validated_sql": "SELECT\n  o.delivery_status,\n  ROUND(CAST(AVG(o.review_score) AS DECIMAL), 4) AS average_review_score,\n  COUNT(o.review_score) AS reviewed_order_count\nFROM analytics.orders AS o\nGROUP BY\n  o.delivery_status\nORDER BY\n  average_review_score DESC NULLS LAST\nLIMIT 1001",
+      "reference_sql": "SELECT delivery_status, AVG(review_score) AS average_review_score\nFROM orders\nGROUP BY delivery_status",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    o.delivery_status,\n    ROUND(AVG(o.review_score), 4) AS average_review_score,\n    COUNT(o.review_score) AS reviewed_order_count\nFROM analytics.orders o\nGROUP BY o.delivery_status\nORDER BY average_review_score DESC NULLS LAST"
+        }
+      ]
+    },
+    {
+      "id": "dev-014",
+      "question": "How many orders from customers in São Paulo state (SP) were delivered?",
+      "difficulty": "easy",
+      "tags": [
+        "filtering",
+        "customer"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7050,
+      "cache_read_tokens": 6613,
+      "output_tokens": 165,
+      "total_ms": 1723.32,
+      "model_ms": 1652.12,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count of delivered orders placed by customers in São Paulo state (SP).",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    COUNT(*) FILTER (WHERE o.is_delivered) AS delivered_order_count\nFROM analytics.orders o\nWHERE o.customer_state = 'SP'",
+      "validated_sql": "SELECT\n  COUNT(*) FILTER(WHERE\n    o.is_delivered) AS delivered_order_count\nFROM analytics.orders AS o\nWHERE\n  o.customer_state = 'SP'\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(*) AS delivered_orders FROM orders WHERE customer_state = 'SP' AND is_delivered",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    COUNT(*) FILTER (WHERE o.is_delivered) AS delivered_order_count\nFROM analytics.orders o\nWHERE o.customer_state = 'SP'"
+        }
+      ]
+    },
+    {
+      "id": "dev-015",
+      "question": "What was the average order value in 2017 and in 2018?",
+      "difficulty": "medium",
+      "tags": [
+        "aggregation",
+        "time_series"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7052,
+      "cache_read_tokens": 6613,
+      "output_tokens": 263,
+      "total_ms": 3814.53,
+      "model_ms": 2642.85,
+      "row_count": 2,
+      "truncated": false,
+      "interpretation": "Compute the average order value (merchandise revenue per revenue order) separately for the years 2017 and 2018.",
+      "assumptions": [
+        "2018 includes September and October 2018, which have very few orders (only 20 total); results for 2018 may be slightly affected by this incomplete data at the tail end."
+      ],
+      "generated_sql": "SELECT\n    EXTRACT(YEAR FROM o.purchase_date)::integer AS purchase_year,\n    ROUND(AVG(o.revenue), 2) AS average_order_value\nFROM analytics.orders o\nWHERE EXTRACT(YEAR FROM o.purchase_date) IN (2017, 2018)\nGROUP BY purchase_year\nORDER BY purchase_year",
+      "validated_sql": "SELECT\n  CAST(EXTRACT(YEAR FROM o.purchase_date) AS INT) AS purchase_year,\n  ROUND(CAST(AVG(o.revenue) AS DECIMAL), 2) AS average_order_value\nFROM analytics.orders AS o\nWHERE\n  EXTRACT(YEAR FROM o.purchase_date) IN (2017, 2018)\nGROUP BY\n  purchase_year\nORDER BY\n  purchase_year\nLIMIT 1001",
+      "reference_sql": "SELECT EXTRACT(YEAR FROM purchased_at) AS year, AVG(revenue) AS average_order_value\nFROM orders\nWHERE purchased_at >= '2017-01-01' AND purchased_at < '2019-01-01'\nGROUP BY EXTRACT(YEAR FROM purchased_at)",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    EXTRACT(YEAR FROM o.purchase_date)::integer AS purchase_year,\n    ROUND(AVG(o.revenue), 2) AS average_order_value\nFROM analytics.orders o\nWHERE EXTRACT(YEAR FROM o.purchase_date) IN (2017, 2018)\nGROUP BY purchase_year\nORDER BY purchase_year"
+        }
+      ]
+    },
+    {
+      "id": "dev-016",
+      "question": "How many items were sold in the health_beauty category in 2018?",
+      "difficulty": "medium",
+      "tags": [
+        "product_category",
+        "filtering"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7051,
+      "cache_read_tokens": 6613,
+      "output_tokens": 275,
+      "total_ms": 3067.44,
+      "model_ms": 2749.23,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the number of item units sold in the health_beauty product category during the year 2018.",
+      "assumptions": [
+        "2018 means the full calendar year 2018 (2018-01-01 to 2018-12-31). Note that orders in 2018-09 and 2018-10 are very sparse (only 20 orders total), so the count may be slightly understated for those months."
+      ],
+      "generated_sql": "SELECT\n    COUNT(oi.revenue) AS items_sold\nFROM analytics.order_items oi\nWHERE\n    oi.product_category = 'health_beauty'\n    AND oi.purchase_date >= '2018-01-01'\n    AND oi.purchase_date < '2019-01-01'",
+      "validated_sql": "SELECT\n  COUNT(oi.revenue) AS items_sold\nFROM analytics.order_items AS oi\nWHERE\n  oi.product_category = 'health_beauty'\n  AND oi.purchase_date >= '2018-01-01'\n  AND oi.purchase_date < '2019-01-01'\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(revenue) AS items_sold\nFROM order_items\nWHERE product_category = 'health_beauty'\n  AND purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    COUNT(oi.revenue) AS items_sold\nFROM analytics.order_items oi\nWHERE\n    oi.product_category = 'health_beauty'\n    AND oi.purchase_date >= '2018-01-01'\n    AND oi.purchase_date < '2019-01-01'"
+        }
+      ]
+    },
+    {
+      "id": "dev-017",
+      "question": "What was the month-over-month revenue growth rate for each month from February to August 2018?",
+      "difficulty": "hard",
+      "tags": [
+        "time_series",
+        "multi_step"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7057,
+      "cache_read_tokens": 6613,
+      "output_tokens": 404,
+      "total_ms": 3107.96,
+      "model_ms": 2777.98,
+      "row_count": 7,
+      "truncated": false,
+      "interpretation": "For each month from February to August 2018, compute the month-over-month revenue growth rate compared to the prior month (starting from January 2018 as the base).",
+      "assumptions": [],
+      "generated_sql": "WITH monthly_revenue AS (\n    SELECT\n        purchase_month,\n        SUM(revenue) AS monthly_revenue\n    FROM analytics.orders\n    WHERE purchase_month >= '2018-01-01'\n      AND purchase_month <= '2018-08-01'\n    GROUP BY purchase_month\n),\nwith_lag AS (\n    SELECT\n        purchase_month,\n        monthly_revenue,\n        LAG(monthly_revenue) OVER (ORDER BY purchase_month) AS prev_monthly_revenue\n    FROM monthly_revenue\n)\nSELECT\n    TO_CHAR(purchase_month, 'YYYY-MM') AS month,\n    ROUND(monthly_revenue, 2) AS revenue,\n    ROUND(prev_monthly_revenue, 2) AS prev_month_revenue,\n    ROUND(\n        (monthly_revenue - prev_monthly_revenue) / NULLIF(prev_monthly_revenue, 0) * 100,\n        2\n    ) AS mom_growth_rate_pct\nFROM with_lag\nWHERE purchase_month >= '2018-02-01'\nORDER BY purchase_month",
+      "validated_sql": "WITH monthly_revenue AS (\n  SELECT\n    purchase_month,\n    SUM(revenue) AS monthly_revenue\n  FROM analytics.orders\n  WHERE\n    purchase_month >= '2018-01-01' AND purchase_month <= '2018-08-01'\n  GROUP BY\n    purchase_month\n), with_lag AS (\n  SELECT\n    purchase_month,\n    monthly_revenue,\n    LAG(monthly_revenue) OVER (ORDER BY purchase_month) AS prev_monthly_revenue\n  FROM monthly_revenue\n)\nSELECT\n  TO_CHAR(purchase_month, 'YYYY-MM') AS month,\n  ROUND(monthly_revenue, 2) AS revenue,\n  ROUND(prev_monthly_revenue, 2) AS prev_month_revenue,\n  ROUND(\n    (\n      monthly_revenue - prev_monthly_revenue\n    ) / NULLIF(prev_monthly_revenue, 0) * 100,\n    2\n  ) AS mom_growth_rate_pct\nFROM with_lag\nWHERE\n  purchase_month >= '2018-02-01'\nORDER BY\n  purchase_month\nLIMIT 1001",
+      "reference_sql": "WITH monthly AS (\n  SELECT purchase_month, SUM(revenue) AS revenue\n  FROM orders\n  WHERE purchased_at >= '2018-01-01' AND purchased_at < '2018-09-01'\n  GROUP BY purchase_month\n)\nSELECT purchase_month,\n       (revenue - LAG(revenue) OVER (ORDER BY purchase_month)) / LAG(revenue) OVER (ORDER BY purchase_month) AS growth_rate\nFROM monthly\nORDER BY purchase_month\nOFFSET 1",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "WITH monthly_revenue AS (\n    SELECT\n        purchase_month,\n        SUM(revenue) AS monthly_revenue\n    FROM analytics.orders\n    WHERE purchase_month >= '2018-01-01'\n      AND purchase_month <= '2018-08-01'\n    GROUP BY purchase_month\n),\nwith_lag AS (\n    SELECT\n        purchase_month,\n        monthly_revenue,\n        LAG(monthly_revenue) OVER (ORDER BY purchase_month) AS prev_monthly_revenue\n    FROM monthly_revenue\n)\nSELECT\n    TO_CHAR(purchase_month, 'YYYY-MM') AS month,\n    ROUND(monthly_revenue, 2) AS revenue,\n    ROUND(prev_monthly_revenue, 2) AS prev_month_revenue,\n    ROUND(\n        (monthly_revenue - prev_monthly_revenue) / NULLIF(prev_monthly_revenue, 0) * 100,\n        2\n    ) AS mom_growth_rate_pct\nFROM with_lag\nWHERE purchase_month >= '2018-02-01'\nORDER BY purchase_month"
+        }
+      ]
+    },
+    {
+      "id": "dev-018",
+      "question": "What is the repeat customer rate?",
+      "difficulty": "hard",
+      "tags": [
+        "customer",
+        "multi_step"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7042,
+      "cache_read_tokens": 6613,
+      "output_tokens": 225,
+      "total_ms": 1838.19,
+      "model_ms": 1677.25,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What is the repeat customer rate, defined as the share of customers with at least one delivered order who have at least two delivered orders?",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    (COUNT(*) FILTER (WHERE c.delivered_orders >= 2))::numeric / NULLIF(COUNT(*), 0) AS repeat_customer_rate\nFROM (\n    SELECT\n        customer_unique_id,\n        COUNT(*) AS delivered_orders\n    FROM analytics.orders\n    WHERE is_delivered\n    GROUP BY customer_unique_id\n) AS c",
+      "validated_sql": "SELECT\n  CAST((\n    COUNT(*) FILTER(WHERE\n      c.delivered_orders >= 2)\n  ) AS DECIMAL) / NULLIF(COUNT(*), 0) AS repeat_customer_rate\nFROM (\n  SELECT\n    customer_unique_id,\n    COUNT(*) AS delivered_orders\n  FROM analytics.orders\n  WHERE\n    is_delivered\n  GROUP BY\n    customer_unique_id\n) AS c\nLIMIT 1001",
+      "reference_sql": "SELECT (COUNT(*) FILTER (WHERE c.delivered_orders >= 2))::numeric / NULLIF(COUNT(*), 0) AS repeat_customer_rate\nFROM (SELECT customer_unique_id, COUNT(*) AS delivered_orders\n      FROM orders\n      WHERE is_delivered\n      GROUP BY customer_unique_id) AS c",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    (COUNT(*) FILTER (WHERE c.delivered_orders >= 2))::numeric / NULLIF(COUNT(*), 0) AS repeat_customer_rate\nFROM (\n    SELECT\n        customer_unique_id,\n        COUNT(*) AS delivered_orders\n    FROM analytics.orders\n    WHERE is_delivered\n    GROUP BY customer_unique_id\n) AS c"
+        }
+      ]
+    },
+    {
+      "id": "dev-019",
+      "question": "What was the cancellation rate in 2017?",
+      "difficulty": "medium",
+      "tags": [
+        "filtering",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7046,
+      "cache_read_tokens": 6613,
+      "output_tokens": 208,
+      "total_ms": 2821.67,
+      "model_ms": 2762.25,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What was the cancellation rate (share of all orders whose status is canceled) for orders placed in 2017?",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    (COUNT(*) FILTER (WHERE o.is_canceled))::numeric / NULLIF(COUNT(*), 0) AS cancellation_rate\nFROM analytics.orders o\nWHERE o.purchased_at >= '2017-01-01'\n  AND o.purchased_at < '2018-01-01'",
+      "validated_sql": "SELECT\n  CAST((\n    COUNT(*) FILTER(WHERE\n      o.is_canceled)\n  ) AS DECIMAL) / NULLIF(COUNT(*), 0) AS cancellation_rate\nFROM analytics.orders AS o\nWHERE\n  o.purchased_at >= '2017-01-01' AND o.purchased_at < '2018-01-01'\nLIMIT 1001",
+      "reference_sql": "SELECT (COUNT(*) FILTER (WHERE is_canceled))::numeric / NULLIF(COUNT(*), 0) AS cancellation_rate\nFROM orders\nWHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    (COUNT(*) FILTER (WHERE o.is_canceled))::numeric / NULLIF(COUNT(*), 0) AS cancellation_rate\nFROM analytics.orders o\nWHERE o.purchased_at >= '2017-01-01'\n  AND o.purchased_at < '2018-01-01'"
+        }
+      ]
+    },
+    {
+      "id": "dev-020",
+      "question": "Among product categories with at least 500 reviewed orders, which 5 have the lowest average review score? Ignore products without a category.",
+      "difficulty": "hard",
+      "tags": [
+        "product_category",
+        "review"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7065,
+      "cache_read_tokens": 6613,
+      "output_tokens": 372,
+      "total_ms": 3357.66,
+      "model_ms": 2938.49,
+      "row_count": 5,
+      "truncated": false,
+      "interpretation": "Among product categories with at least 500 reviewed orders (excluding uncategorized products), which 5 have the lowest average review score?",
+      "assumptions": [
+        "'Reviewed orders' means orders with a non-NULL review_score in order_categories.",
+        "Products without a category are identified by product_category = 'uncategorized' and are excluded.",
+        "Each order is counted once per category; since order_categories has one row per (order_id, product_category), COUNT(order_id) is equivalent to COUNT(DISTINCT order_id) here."
+      ],
+      "generated_sql": "SELECT\n    oc.product_category,\n    COUNT(oc.order_id) FILTER (WHERE oc.review_score IS NOT NULL) AS reviewed_order_count,\n    ROUND(AVG(oc.review_score), 4) AS average_review_score\nFROM analytics.order_categories oc\nWHERE oc.product_category <> 'uncategorized'\nGROUP BY oc.product_category\nHAVING COUNT(oc.order_id) FILTER (WHERE oc.review_score IS NOT NULL) >= 500\nORDER BY average_review_score ASC\nLIMIT 5",
+      "validated_sql": "SELECT\n  oc.product_category,\n  COUNT(oc.order_id) FILTER(WHERE\n    oc.review_score IS NOT NULL) AS reviewed_order_count,\n  ROUND(CAST(AVG(oc.review_score) AS DECIMAL), 4) AS average_review_score\nFROM analytics.order_categories AS oc\nWHERE\n  oc.product_category <> 'uncategorized'\nGROUP BY\n  oc.product_category\nHAVING\n  COUNT(oc.order_id) FILTER(WHERE\n    oc.review_score IS NOT NULL) >= 500\nORDER BY\n  average_review_score ASC\nLIMIT 5",
+      "reference_sql": "SELECT product_category, AVG(review_score) AS average_review_score\nFROM order_categories\nWHERE product_category <> 'uncategorized'\nGROUP BY product_category\nHAVING COUNT(review_score) >= 500\nORDER BY average_review_score\nLIMIT 5",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    oc.product_category,\n    COUNT(oc.order_id) FILTER (WHERE oc.review_score IS NOT NULL) AS reviewed_order_count,\n    ROUND(AVG(oc.review_score), 4) AS average_review_score\nFROM analytics.order_categories oc\nWHERE oc.product_category <> 'uncategorized'\nGROUP BY oc.product_category\nHAVING COUNT(oc.order_id) FILTER (WHERE oc.review_score IS NOT NULL) >= 500\nORDER BY average_review_score ASC\nLIMIT 5"
+        }
+      ]
+    },
+    {
+      "id": "dev-021",
+      "question": "Among sellers with at least 20 delivered orders, which 3 have the highest late delivery rate?",
+      "difficulty": "hard",
+      "tags": [
+        "seller",
+        "delivery"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7057,
+      "cache_read_tokens": 6613,
+      "output_tokens": 412,
+      "total_ms": 3538.68,
+      "model_ms": 3318.59,
+      "row_count": 3,
+      "truncated": false,
+      "interpretation": "Among sellers with at least 20 delivered orders, return the 3 sellers with the highest late delivery rate (share of delivered orders with a delivery date that arrived after the estimated delivery date).",
+      "assumptions": [
+        "Sellers are filtered to those with at least 20 delivered orders (regardless of whether they have a delivery date), matching the stated threshold. The late delivery rate denominator uses only delivered orders that also have a delivery date (is_late IS NOT NULL), consistent with the catalog definition."
+      ],
+      "generated_sql": "SELECT\n    os.seller_id,\n    COUNT(*) FILTER (WHERE os.is_late IS NOT NULL)                                          AS delivered_with_date,\n    COUNT(*) FILTER (WHERE os.is_late = TRUE)                                               AS late_orders,\n    ROUND(\n        (COUNT(*) FILTER (WHERE os.is_late = TRUE))::numeric\n        / NULLIF(COUNT(*) FILTER (WHERE os.is_late IS NOT NULL), 0),\n        4\n    )                                                                                        AS late_delivery_rate\nFROM analytics.order_sellers os\nWHERE os.is_delivered = TRUE\nGROUP BY os.seller_id\nHAVING COUNT(*) FILTER (WHERE os.is_delivered) >= 20\nORDER BY late_delivery_rate DESC NULLS LAST\nLIMIT 3",
+      "validated_sql": "SELECT\n  os.seller_id,\n  COUNT(*) FILTER(WHERE\n    os.is_late IS NOT NULL) AS delivered_with_date,\n  COUNT(*) FILTER(WHERE\n    os.is_late = TRUE) AS late_orders,\n  ROUND(\n    CAST((\n      COUNT(*) FILTER(WHERE\n        os.is_late = TRUE)\n    ) AS DECIMAL) / NULLIF(COUNT(*) FILTER(WHERE\n      os.is_late IS NOT NULL), 0),\n    4\n  ) AS late_delivery_rate\nFROM analytics.order_sellers AS os\nWHERE\n  os.is_delivered = TRUE\nGROUP BY\n  os.seller_id\nHAVING\n  COUNT(*) FILTER(WHERE\n    os.is_delivered) >= 20\nORDER BY\n  late_delivery_rate DESC NULLS LAST\nLIMIT 3",
+      "reference_sql": "SELECT seller_id, (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM order_sellers\nGROUP BY seller_id\nHAVING COUNT(*) FILTER (WHERE is_delivered) >= 20\nORDER BY late_delivery_rate DESC\nLIMIT 3",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    os.seller_id,\n    COUNT(*) FILTER (WHERE os.is_late IS NOT NULL)                                          AS delivered_with_date,\n    COUNT(*) FILTER (WHERE os.is_late = TRUE)                                               AS late_orders,\n    ROUND(\n        (COUNT(*) FILTER (WHERE os.is_late = TRUE))::numeric\n        / NULLIF(COUNT(*) FILTER (WHERE os.is_late IS NOT NULL), 0),\n        4\n    )                                                                                        AS late_delivery_rate\nFROM analytics.order_sellers os\nWHERE os.is_delivered = TRUE\nGROUP BY os.seller_id\nHAVING COUNT(*) FILTER (WHERE os.is_delivered) >= 20\nORDER BY late_delivery_rate DESC NULLS LAST\nLIMIT 3"
+        }
+      ]
+    },
+    {
+      "id": "dev-022",
+      "question": "What is the average weight in grams of products in the furniture_decor category?",
+      "difficulty": "easy",
+      "tags": [
+        "product_category",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7053,
+      "cache_read_tokens": 6613,
+      "output_tokens": 194,
+      "total_ms": 1884.89,
+      "model_ms": 1831.1,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What is the average weight in grams of products in the furniture_decor category?",
+      "assumptions": [
+        "Average weight is computed over all products in the furniture_decor category that have a non-NULL weight_g value."
+      ],
+      "generated_sql": "SELECT\n    ROUND(AVG(p.weight_g), 2) AS avg_weight_g\nFROM analytics.products p\nWHERE p.product_category = 'furniture_decor'",
+      "validated_sql": "SELECT\n  ROUND(CAST(AVG(p.weight_g) AS DECIMAL), 2) AS avg_weight_g\nFROM analytics.products AS p\nWHERE\n  p.product_category = 'furniture_decor'\nLIMIT 1001",
+      "reference_sql": "SELECT AVG(weight_g) AS average_weight_g FROM products WHERE product_category = 'furniture_decor'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    ROUND(AVG(p.weight_g), 2) AS avg_weight_g\nFROM analytics.products p\nWHERE p.product_category = 'furniture_decor'"
+        }
+      ]
+    },
+    {
+      "id": "dev-023",
+      "question": "How much revenue came from products weighing more than 10 kg?",
+      "difficulty": "medium",
+      "tags": [
+        "join",
+        "product_category"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7050,
+      "cache_read_tokens": 6613,
+      "output_tokens": 222,
+      "total_ms": 2338.56,
+      "model_ms": 2140.8,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Total merchandise revenue from order items where the product weighs more than 10,000 grams (10 kg).",
+      "assumptions": [
+        "Products weighing more than 10 kg means weight_g > 10000 in the products table."
+      ],
+      "generated_sql": "SELECT\n    ROUND(SUM(oi.revenue), 2) AS revenue_from_heavy_products\nFROM analytics.order_items oi\nINNER JOIN analytics.products p ON p.product_id = oi.product_id\nWHERE p.weight_g > 10000",
+      "validated_sql": "SELECT\n  ROUND(SUM(oi.revenue), 2) AS revenue_from_heavy_products\nFROM analytics.order_items AS oi\nINNER JOIN analytics.products AS p\n  ON p.product_id = oi.product_id\nWHERE\n  p.weight_g > 10000\nLIMIT 1001",
+      "reference_sql": "SELECT SUM(i.revenue) AS revenue\nFROM order_items AS i\nJOIN products AS p ON p.product_id = i.product_id\nWHERE p.weight_g > 10000",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    ROUND(SUM(oi.revenue), 2) AS revenue_from_heavy_products\nFROM analytics.order_items oi\nINNER JOIN analytics.products p ON p.product_id = oi.product_id\nWHERE p.weight_g > 10000"
+        }
+      ]
+    },
+    {
+      "id": "dev-024",
+      "question": "How many sellers have sold at least one item?",
+      "difficulty": "easy",
+      "tags": [
+        "seller",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7045,
+      "cache_read_tokens": 6613,
+      "output_tokens": 197,
+      "total_ms": 2319.75,
+      "model_ms": 1990.8,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the number of distinct sellers who have sold at least one item in a revenue order.",
+      "assumptions": [
+        "'Sold at least one item' means the seller has at least one item in a revenue order (non-canceled, non-unavailable orders with items)."
+      ],
+      "generated_sql": "SELECT COUNT(DISTINCT seller_id) AS sellers_with_at_least_one_item\nFROM analytics.order_items\nWHERE is_revenue_order = true",
+      "validated_sql": "SELECT\n  COUNT(DISTINCT seller_id) AS sellers_with_at_least_one_item\nFROM analytics.order_items\nWHERE\n  is_revenue_order = TRUE\nLIMIT 1001",
+      "reference_sql": "SELECT COUNT(DISTINCT seller_id) AS sellers FROM order_items WHERE is_revenue_order",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT COUNT(DISTINCT seller_id) AS sellers_with_at_least_one_item\nFROM analytics.order_items\nWHERE is_revenue_order = true"
+        }
+      ]
+    },
+    {
+      "id": "dev-025",
+      "question": "At which hour of the day are the most orders placed?",
+      "difficulty": "medium",
+      "tags": [
+        "time_series",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7047,
+      "cache_read_tokens": 6613,
+      "output_tokens": 185,
+      "total_ms": 1767.21,
+      "model_ms": 1665.55,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Find the hour of the day (0–23) during which the highest number of orders are placed.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    EXTRACT(HOUR FROM purchased_at)::integer AS hour_of_day,\n    COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY hour_of_day\nORDER BY order_count DESC\nLIMIT 1",
+      "validated_sql": "SELECT\n  CAST(EXTRACT(HOUR FROM purchased_at) AS INT) AS hour_of_day,\n  COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY\n  hour_of_day\nORDER BY\n  order_count DESC NULLS LAST\nLIMIT 1",
+      "reference_sql": "SELECT EXTRACT(HOUR FROM purchased_at) AS hour, COUNT(*) AS orders\nFROM orders\nGROUP BY EXTRACT(HOUR FROM purchased_at)\nORDER BY orders DESC\nLIMIT 1",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    EXTRACT(HOUR FROM purchased_at)::integer AS hour_of_day,\n    COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY hour_of_day\nORDER BY order_count DESC\nLIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": "dev-026",
+      "question": "What is the average number of installments for credit card payments?",
+      "difficulty": "easy",
+      "tags": [
+        "filtering",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7048,
+      "cache_read_tokens": 6613,
+      "output_tokens": 194,
+      "total_ms": 1995.86,
+      "model_ms": 1895.44,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What is the average number of installments for credit card payments across all orders?",
+      "assumptions": [
+        "All credit card payment records are included regardless of order status, as the question does not restrict to revenue orders."
+      ],
+      "generated_sql": "SELECT\n    ROUND(AVG(op.payment_installments), 2) AS avg_installments_credit_card\nFROM analytics.order_payments op\nWHERE op.payment_type = 'credit_card'",
+      "validated_sql": "SELECT\n  ROUND(CAST(AVG(op.payment_installments) AS DECIMAL), 2) AS avg_installments_credit_card\nFROM analytics.order_payments AS op\nWHERE\n  op.payment_type = 'credit_card'\nLIMIT 1001",
+      "reference_sql": "SELECT AVG(payment_installments) AS average_installments FROM order_payments WHERE payment_type = 'credit_card'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    ROUND(AVG(op.payment_installments), 2) AS avg_installments_credit_card\nFROM analytics.order_payments op\nWHERE op.payment_type = 'credit_card'"
+        }
+      ]
+    },
+    {
+      "id": "dev-027",
+      "question": "What percentage of 2017 revenue came from customers in SP?",
+      "difficulty": "hard",
+      "tags": [
+        "customer",
+        "multi_step"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7049,
+      "cache_read_tokens": 6613,
+      "output_tokens": 219,
+      "total_ms": 2001.82,
+      "model_ms": 1877.22,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What percentage of 2017 revenue came from orders placed by customers in the state of SP?",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    ROUND(\n        100.0 * SUM(revenue) FILTER (WHERE customer_state = 'SP')\n        / NULLIF(SUM(revenue), 0),\n        2\n    ) AS sp_revenue_pct\nFROM analytics.orders\nWHERE purchased_at >= '2017-01-01'\n  AND purchased_at < '2018-01-01'",
+      "validated_sql": "SELECT\n  ROUND(\n    100.0 * SUM(revenue) FILTER(WHERE\n      customer_state = 'SP') / NULLIF(SUM(revenue), 0),\n    2\n  ) AS sp_revenue_pct\nFROM analytics.orders\nWHERE\n  purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'\nLIMIT 1001",
+      "reference_sql": "SELECT SUM(revenue) FILTER (WHERE customer_state = 'SP') / SUM(revenue) AS sp_revenue_share\nFROM orders\nWHERE purchased_at >= '2017-01-01' AND purchased_at < '2018-01-01'",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    ROUND(\n        100.0 * SUM(revenue) FILTER (WHERE customer_state = 'SP')\n        / NULLIF(SUM(revenue), 0),\n        2\n    ) AS sp_revenue_pct\nFROM analytics.orders\nWHERE purchased_at >= '2017-01-01'\n  AND purchased_at < '2018-01-01'"
+        }
+      ]
+    },
+    {
+      "id": "dev-028",
+      "question": "How many orders are there in each order status?",
+      "difficulty": "easy",
+      "tags": [
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7045,
+      "cache_read_tokens": 6613,
+      "output_tokens": 152,
+      "total_ms": 1430.26,
+      "model_ms": 1372.93,
+      "row_count": 8,
+      "truncated": false,
+      "interpretation": "Count the number of orders for each order status.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    order_status,\n    COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY order_status\nORDER BY order_count DESC",
+      "validated_sql": "SELECT\n  order_status,\n  COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY\n  order_status\nORDER BY\n  order_count DESC NULLS LAST\nLIMIT 1001",
+      "reference_sql": "SELECT order_status, COUNT(*) AS orders FROM orders GROUP BY order_status",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    order_status,\n    COUNT(*) AS order_count\nFROM analytics.orders\nGROUP BY order_status\nORDER BY order_count DESC"
+        }
+      ]
+    },
+    {
+      "id": "dev-029",
+      "question": "How many new customers made their first purchase in each month of 2017?",
+      "difficulty": "hard",
+      "tags": [
+        "customer",
+        "time_series",
+        "multi_step"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7051,
+      "cache_read_tokens": 6613,
+      "output_tokens": 298,
+      "total_ms": 2805.92,
+      "model_ms": 2579.87,
+      "row_count": 12,
+      "truncated": false,
+      "interpretation": "Count the number of customers whose very first purchase occurred in each calendar month of 2017.",
+      "assumptions": [
+        "A 'new customer' is defined as a customer (customer_unique_id) whose first-ever order (across all statuses) falls within that month."
+      ],
+      "generated_sql": "WITH first_purchase AS (\n    SELECT\n        customer_unique_id,\n        DATE_TRUNC('month', MIN(purchased_at))::date AS first_purchase_month\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n)\nSELECT\n    first_purchase_month,\n    COUNT(customer_unique_id) AS new_customers\nFROM first_purchase\nWHERE first_purchase_month >= '2017-01-01'\n  AND first_purchase_month < '2018-01-01'\nGROUP BY first_purchase_month\nORDER BY first_purchase_month",
+      "validated_sql": "WITH first_purchase AS (\n  SELECT\n    customer_unique_id,\n    CAST(DATE_TRUNC('MONTH', MIN(purchased_at)) AS DATE) AS first_purchase_month\n  FROM analytics.orders\n  GROUP BY\n    customer_unique_id\n)\nSELECT\n  first_purchase_month,\n  COUNT(customer_unique_id) AS new_customers\nFROM first_purchase\nWHERE\n  first_purchase_month >= '2017-01-01' AND first_purchase_month < '2018-01-01'\nGROUP BY\n  first_purchase_month\nORDER BY\n  first_purchase_month\nLIMIT 1001",
+      "reference_sql": "WITH first_orders AS (\n  SELECT customer_unique_id, MIN(purchased_at) AS first_purchased_at\n  FROM orders\n  GROUP BY customer_unique_id\n)\nSELECT DATE_TRUNC('month', first_purchased_at) AS month, COUNT(*) AS new_customers\nFROM first_orders\nWHERE first_purchased_at >= '2017-01-01' AND first_purchased_at < '2018-01-01'\nGROUP BY DATE_TRUNC('month', first_purchased_at)\nORDER BY month",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "WITH first_purchase AS (\n    SELECT\n        customer_unique_id,\n        DATE_TRUNC('month', MIN(purchased_at))::date AS first_purchase_month\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n)\nSELECT\n    first_purchase_month,\n    COUNT(customer_unique_id) AS new_customers\nFROM first_purchase\nWHERE first_purchase_month >= '2017-01-01'\n  AND first_purchase_month < '2018-01-01'\nGROUP BY first_purchase_month\nORDER BY first_purchase_month"
+        }
+      ]
+    },
+    {
+      "id": "dev-030",
+      "question": "What is the median delivery time in days for delivered orders?",
+      "difficulty": "medium",
+      "tags": [
+        "delivery",
+        "aggregation"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7047,
+      "cache_read_tokens": 6613,
+      "output_tokens": 170,
+      "total_ms": 1695.01,
+      "model_ms": 1562.01,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What is the median number of days from purchase to customer delivery for delivered orders?",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY delivery_days) AS median_delivery_days\nFROM analytics.orders\nWHERE delivery_days IS NOT NULL",
+      "validated_sql": "SELECT\n  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY\n    delivery_days) AS median_delivery_days\nFROM analytics.orders\nWHERE\n  delivery_days IS NOT NULL\nLIMIT 1001",
+      "reference_sql": "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY delivery_days) AS median_delivery_days FROM orders",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY delivery_days) AS median_delivery_days\nFROM analytics.orders\nWHERE delivery_days IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "id": "dev-031",
+      "question": "How many customers placed more than one order, and what percentage of all unique customers do they represent?",
+      "difficulty": "medium",
+      "tags": [
+        "customer",
+        "multi_step",
+        "human_written"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7055,
+      "cache_read_tokens": 6613,
+      "output_tokens": 315,
+      "total_ms": 3013.53,
+      "model_ms": 2868.9,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "Count the number of customers who placed more than one order (any status) and their share of all unique customers.",
+      "assumptions": [
+        "'More than one order' counts all order statuses (not just delivered or revenue orders), consistent with the order_count metric definition."
+      ],
+      "generated_sql": "SELECT\n    COUNT(*) FILTER (WHERE order_count > 1)                                          AS customers_with_multiple_orders,\n    COUNT(*)                                                                          AS total_unique_customers,\n    ROUND(\n        (COUNT(*) FILTER (WHERE order_count > 1))::numeric\n        / NULLIF(COUNT(*), 0) * 100,\n        2\n    )                                                                                 AS pct_of_all_customers\nFROM (\n    SELECT\n        customer_unique_id,\n        COUNT(*) AS order_count\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n) AS c",
+      "validated_sql": "SELECT\n  COUNT(*) FILTER(WHERE\n    order_count > 1) AS customers_with_multiple_orders,\n  COUNT(*) AS total_unique_customers,\n  ROUND(\n    CAST((\n      COUNT(*) FILTER(WHERE\n        order_count > 1)\n    ) AS DECIMAL) / NULLIF(COUNT(*), 0) * 100,\n    2\n  ) AS pct_of_all_customers\nFROM (\n  SELECT\n    customer_unique_id,\n    COUNT(*) AS order_count\n  FROM analytics.orders\n  GROUP BY\n    customer_unique_id\n) AS c\nLIMIT 1001",
+      "reference_sql": "WITH per_customer AS (\n  SELECT customer_unique_id, COUNT(*) AS orders\n  FROM orders\n  GROUP BY customer_unique_id\n)\nSELECT COUNT(*) FILTER (WHERE orders > 1) AS multi_order_customers,\n       (COUNT(*) FILTER (WHERE orders > 1))::numeric / COUNT(*) AS share_of_customers\nFROM per_customer",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    COUNT(*) FILTER (WHERE order_count > 1)                                          AS customers_with_multiple_orders,\n    COUNT(*)                                                                          AS total_unique_customers,\n    ROUND(\n        (COUNT(*) FILTER (WHERE order_count > 1))::numeric\n        / NULLIF(COUNT(*), 0) * 100,\n        2\n    )                                                                                 AS pct_of_all_customers\nFROM (\n    SELECT\n        customer_unique_id,\n        COUNT(*) AS order_count\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n) AS c"
+        }
+      ]
+    },
+    {
+      "id": "dev-032",
+      "question": "For each month of 2018, what percentage of delivered orders arrived late? Return only months with at least 100 delivered orders, ranked from highest to lowest late delivery rate.",
+      "difficulty": "medium",
+      "tags": [
+        "delivery",
+        "time_series",
+        "human_written"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7072,
+      "cache_read_tokens": 6613,
+      "output_tokens": 356,
+      "total_ms": 3416.64,
+      "model_ms": 3170.95,
+      "row_count": 8,
+      "truncated": false,
+      "interpretation": "For each month of 2018, compute the late delivery rate among delivered orders with a delivery date, returning only months with at least 100 delivered orders, ranked from highest to lowest late delivery rate.",
+      "assumptions": [],
+      "generated_sql": "SELECT\n    TO_CHAR(o.purchase_month, 'YYYY-MM') AS purchase_month,\n    COUNT(o.is_late) AS delivered_orders_with_date,\n    COUNT(*) FILTER (WHERE o.is_late) AS late_orders,\n    ROUND(\n        (COUNT(*) FILTER (WHERE o.is_late))::numeric / NULLIF(COUNT(o.is_late), 0) * 100,\n        2\n    ) AS late_delivery_rate_pct\nFROM analytics.orders o\nWHERE o.purchase_month >= '2018-01-01'\n  AND o.purchase_month < '2019-01-01'\nGROUP BY o.purchase_month\nHAVING COUNT(o.is_late) >= 100\nORDER BY late_delivery_rate_pct DESC;",
+      "validated_sql": "SELECT\n  TO_CHAR(o.purchase_month, 'YYYY-MM') AS purchase_month,\n  COUNT(o.is_late) AS delivered_orders_with_date,\n  COUNT(*) FILTER(WHERE\n    o.is_late) AS late_orders,\n  ROUND(\n    CAST((\n      COUNT(*) FILTER(WHERE\n        o.is_late)\n    ) AS DECIMAL) / NULLIF(COUNT(o.is_late), 0) * 100,\n    2\n  ) AS late_delivery_rate_pct\nFROM analytics.orders AS o\nWHERE\n  o.purchase_month >= '2018-01-01' AND o.purchase_month < '2019-01-01'\nGROUP BY\n  o.purchase_month\nHAVING\n  COUNT(o.is_late) >= 100\nORDER BY\n  late_delivery_rate_pct DESC NULLS LAST\nLIMIT 1001",
+      "reference_sql": "SELECT purchase_month,\n       (COUNT(*) FILTER (WHERE is_late))::numeric / NULLIF(COUNT(is_late), 0) AS late_delivery_rate\nFROM orders\nWHERE purchased_at >= '2018-01-01' AND purchased_at < '2019-01-01'\nGROUP BY purchase_month\nHAVING COUNT(*) FILTER (WHERE is_delivered) >= 100\nORDER BY late_delivery_rate DESC",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    TO_CHAR(o.purchase_month, 'YYYY-MM') AS purchase_month,\n    COUNT(o.is_late) AS delivered_orders_with_date,\n    COUNT(*) FILTER (WHERE o.is_late) AS late_orders,\n    ROUND(\n        (COUNT(*) FILTER (WHERE o.is_late))::numeric / NULLIF(COUNT(o.is_late), 0) * 100,\n        2\n    ) AS late_delivery_rate_pct\nFROM analytics.orders o\nWHERE o.purchase_month >= '2018-01-01'\n  AND o.purchase_month < '2019-01-01'\nGROUP BY o.purchase_month\nHAVING COUNT(o.is_late) >= 100\nORDER BY late_delivery_rate_pct DESC;"
+        }
+      ]
+    },
+    {
+      "id": "dev-033",
+      "question": "What percentage of total merchandise revenue comes from the top 10% of customers ranked by their total spending?",
+      "difficulty": "hard",
+      "tags": [
+        "customer",
+        "aggregation",
+        "multi_step",
+        "human_written"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7056,
+      "cache_read_tokens": 6613,
+      "output_tokens": 421,
+      "total_ms": 4272.32,
+      "model_ms": 3778.71,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "What percentage of total merchandise revenue comes from the top 10% of customers ranked by their total spending (sum of revenue per customer_unique_id)?",
+      "assumptions": [
+        "Top 10% of customers is defined as the top decile (NTILE 1 of 10) when customers are ranked by descending total merchandise revenue spent.",
+        "Only customers with at least one revenue order are included (customers with no revenue orders contribute nothing and are excluded from the ranking)."
+      ],
+      "generated_sql": "WITH customer_revenue AS (\n    SELECT\n        customer_unique_id,\n        SUM(revenue) AS customer_revenue\n    FROM analytics.orders\n    WHERE is_revenue_order\n    GROUP BY customer_unique_id\n),\ncustomer_decile AS (\n    SELECT\n        customer_unique_id,\n        customer_revenue,\n        NTILE(10) OVER (ORDER BY customer_revenue DESC) AS decile\n    FROM customer_revenue\n),\ntotals AS (\n    SELECT\n        SUM(customer_revenue) FILTER (WHERE decile = 1) AS top10_revenue,\n        SUM(customer_revenue) AS total_revenue\n    FROM customer_decile\n)\nSELECT\n    ROUND(100.0 * top10_revenue / NULLIF(total_revenue, 0), 2) AS top10pct_customers_revenue_share,\n    top10_revenue,\n    total_revenue\nFROM totals",
+      "validated_sql": "WITH customer_revenue AS (\n  SELECT\n    customer_unique_id,\n    SUM(revenue) AS customer_revenue\n  FROM analytics.orders\n  WHERE\n    is_revenue_order\n  GROUP BY\n    customer_unique_id\n), customer_decile AS (\n  SELECT\n    customer_unique_id,\n    customer_revenue,\n    NTILE(10) OVER (ORDER BY customer_revenue DESC) AS decile\n  FROM customer_revenue\n), totals AS (\n  SELECT\n    SUM(customer_revenue) FILTER(WHERE\n      decile = 1) AS top10_revenue,\n    SUM(customer_revenue) AS total_revenue\n  FROM customer_decile\n)\nSELECT\n  ROUND(100.0 * top10_revenue / NULLIF(total_revenue, 0), 2) AS top10pct_customers_revenue_share,\n  top10_revenue,\n  total_revenue\nFROM totals\nLIMIT 1001",
+      "reference_sql": "WITH spend AS (\n  SELECT customer_unique_id, SUM(revenue) AS revenue\n  FROM orders\n  WHERE is_revenue_order\n  GROUP BY customer_unique_id\n), ranked AS (\n  SELECT revenue, NTILE(10) OVER (ORDER BY revenue DESC) AS decile\n  FROM spend\n)\nSELECT SUM(revenue) FILTER (WHERE decile = 1) / SUM(revenue) AS top_decile_revenue_share\nFROM ranked",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "WITH customer_revenue AS (\n    SELECT\n        customer_unique_id,\n        SUM(revenue) AS customer_revenue\n    FROM analytics.orders\n    WHERE is_revenue_order\n    GROUP BY customer_unique_id\n),\ncustomer_decile AS (\n    SELECT\n        customer_unique_id,\n        customer_revenue,\n        NTILE(10) OVER (ORDER BY customer_revenue DESC) AS decile\n    FROM customer_revenue\n),\ntotals AS (\n    SELECT\n        SUM(customer_revenue) FILTER (WHERE decile = 1) AS top10_revenue,\n        SUM(customer_revenue) AS total_revenue\n    FROM customer_decile\n)\nSELECT\n    ROUND(100.0 * top10_revenue / NULLIF(total_revenue, 0), 2) AS top10pct_customers_revenue_share,\n    top10_revenue,\n    total_revenue\nFROM totals"
+        }
+      ]
+    },
+    {
+      "id": "dev-034",
+      "question": "For customers whose first purchase was in January 2018, how many returned to place another order within 90 days, and what percentage of that cohort does this represent?",
+      "difficulty": "hard",
+      "tags": [
+        "customer",
+        "time_series",
+        "multi_step",
+        "human_written"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7071,
+      "cache_read_tokens": 6613,
+      "output_tokens": 708,
+      "total_ms": 5752.24,
+      "model_ms": 5502.17,
+      "row_count": 1,
+      "truncated": false,
+      "interpretation": "For customers whose first-ever purchase was in January 2018, count how many placed at least one additional order within 90 days of that first purchase, and what percentage of the January 2018 cohort that represents.",
+      "assumptions": [
+        "'First purchase' is defined as the customer's earliest purchased_at timestamp across all orders of any status.",
+        "'Returned within 90 days' means the customer placed at least one additional order (any status) strictly after their first purchase and within 90 calendar days of it.",
+        "The cohort is defined by the purchase timestamp falling in January 2018 (2018-01-01 to 2018-01-31 inclusive).",
+        "No status filter is applied to either the cohort-defining order or the follow-up order, consistent with order_count metric."
+      ],
+      "generated_sql": "WITH first_purchase AS (\n    -- Find each customer's first purchase date\n    SELECT\n        customer_unique_id,\n        MIN(purchased_at) AS first_purchased_at\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n),\njan_2018_cohort AS (\n    -- Customers whose first purchase was in January 2018\n    SELECT\n        customer_unique_id,\n        first_purchased_at\n    FROM first_purchase\n    WHERE first_purchased_at >= '2018-01-01'\n      AND first_purchased_at  < '2018-02-01'\n),\nrepeat_buyers AS (\n    -- Among the cohort, find those who placed another order within 90 days of their first purchase\n    SELECT DISTINCT\n        c.customer_unique_id\n    FROM jan_2018_cohort c\n    INNER JOIN analytics.orders o\n        ON o.customer_unique_id = c.customer_unique_id\n       AND o.purchased_at > c.first_purchased_at\n       AND o.purchased_at <= c.first_purchased_at + INTERVAL '90 days'\n)\nSELECT\n    COUNT(DISTINCT c.customer_unique_id)                              AS cohort_size,\n    COUNT(DISTINCT r.customer_unique_id)                              AS returned_within_90_days,\n    ROUND(\n        COUNT(DISTINCT r.customer_unique_id)::numeric\n        / NULLIF(COUNT(DISTINCT c.customer_unique_id), 0) * 100, 2\n    )                                                                 AS return_rate_pct\nFROM jan_2018_cohort c\nLEFT JOIN repeat_buyers r\n    ON r.customer_unique_id = c.customer_unique_id",
+      "validated_sql": "WITH first_purchase AS (\n  SELECT\n    customer_unique_id,\n    MIN(purchased_at) AS first_purchased_at\n  FROM analytics.orders\n  GROUP BY\n    customer_unique_id\n), jan_2018_cohort AS (\n  SELECT\n    customer_unique_id,\n    first_purchased_at\n  FROM first_purchase\n  WHERE\n    first_purchased_at >= '2018-01-01' AND first_purchased_at < '2018-02-01'\n), repeat_buyers AS (\n  SELECT DISTINCT\n    c.customer_unique_id\n  FROM jan_2018_cohort AS c\n  INNER JOIN analytics.orders AS o\n    ON o.customer_unique_id = c.customer_unique_id\n    AND o.purchased_at > c.first_purchased_at\n    AND o.purchased_at <= c.first_purchased_at + INTERVAL '90 DAYS'\n)\nSELECT\n  COUNT(DISTINCT c.customer_unique_id) AS cohort_size,\n  COUNT(DISTINCT r.customer_unique_id) AS returned_within_90_days,\n  ROUND(\n    CAST(COUNT(DISTINCT r.customer_unique_id) AS DECIMAL) / NULLIF(COUNT(DISTINCT c.customer_unique_id), 0) * 100,\n    2\n  ) AS return_rate_pct\nFROM jan_2018_cohort AS c\nLEFT JOIN repeat_buyers AS r\n  ON r.customer_unique_id = c.customer_unique_id\nLIMIT 1001",
+      "reference_sql": "WITH with_first AS (\n  SELECT customer_unique_id, purchased_at,\n         MIN(purchased_at) OVER (PARTITION BY customer_unique_id) AS first_purchased_at\n  FROM orders\n), cohort AS (\n  SELECT customer_unique_id,\n         COUNT(*) FILTER (WHERE purchased_at > first_purchased_at\n                          AND purchased_at <= first_purchased_at + INTERVAL '90 days') > 0 AS returned\n  FROM with_first\n  WHERE first_purchased_at >= '2018-01-01' AND first_purchased_at < '2018-02-01'\n  GROUP BY customer_unique_id\n)\nSELECT COUNT(*) FILTER (WHERE returned) AS returning_customers,\n       (COUNT(*) FILTER (WHERE returned))::numeric / COUNT(*) AS returning_share\nFROM cohort",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "WITH first_purchase AS (\n    -- Find each customer's first purchase date\n    SELECT\n        customer_unique_id,\n        MIN(purchased_at) AS first_purchased_at\n    FROM analytics.orders\n    GROUP BY customer_unique_id\n),\njan_2018_cohort AS (\n    -- Customers whose first purchase was in January 2018\n    SELECT\n        customer_unique_id,\n        first_purchased_at\n    FROM first_purchase\n    WHERE first_purchased_at >= '2018-01-01'\n      AND first_purchased_at  < '2018-02-01'\n),\nrepeat_buyers AS (\n    -- Among the cohort, find those who placed another order within 90 days of their first purchase\n    SELECT DISTINCT\n        c.customer_unique_id\n    FROM jan_2018_cohort c\n    INNER JOIN analytics.orders o\n        ON o.customer_unique_id = c.customer_unique_id\n       AND o.purchased_at > c.first_purchased_at\n       AND o.purchased_at <= c.first_purchased_at + INTERVAL '90 days'\n)\nSELECT\n    COUNT(DISTINCT c.customer_unique_id)                              AS cohort_size,\n    COUNT(DISTINCT r.customer_unique_id)                              AS returned_within_90_days,\n    ROUND(\n        COUNT(DISTINCT r.customer_unique_id)::numeric\n        / NULLIF(COUNT(DISTINCT c.customer_unique_id), 0) * 100, 2\n    )                                                                 AS return_rate_pct\nFROM jan_2018_cohort c\nLEFT JOIN repeat_buyers r\n    ON r.customer_unique_id = c.customer_unique_id"
+        }
+      ]
+    },
+    {
+      "id": "dev-035",
+      "question": "Among sellers with at least 50 delivered orders, which 10 have the largest average lead time (earliest delivery relative to their estimated delivery date)?",
+      "difficulty": "hard",
+      "tags": [
+        "seller",
+        "delivery",
+        "human_written"
+      ],
+      "verified": true,
+      "status": "answered",
+      "generated": true,
+      "validated": true,
+      "executed": true,
+      "correct": true,
+      "category": "correct",
+      "category_note": "",
+      "error_code": null,
+      "repair_attempted": false,
+      "answer_source": "generation",
+      "model_calls": 1,
+      "input_tokens": 7066,
+      "cache_read_tokens": 6613,
+      "output_tokens": 467,
+      "total_ms": 4198.37,
+      "model_ms": 3950.67,
+      "row_count": 10,
+      "truncated": false,
+      "interpretation": "Among sellers with at least 50 delivered orders, return the 10 with the largest average delivery delay (most negative = earliest relative to estimated delivery date), i.e. the 10 sellers whose deliveries arrive the most days before the estimated date on average.",
+      "assumptions": [
+        "'Largest average lead time (earliest delivery relative to estimated date)' is interpreted as the most negative average delivery_delay_days (delivered date minus estimated date), meaning the seller's orders arrive the greatest number of days before the estimated delivery date on average.",
+        "The threshold of at least 50 delivered orders is applied only to delivered orders that have a delivery date (is_late IS NOT NULL), since delivery_delay_days is NULL without a delivery date.",
+        "seller_state is included for context."
+      ],
+      "generated_sql": "SELECT\n    os.seller_id,\n    os.seller_state,\n    COUNT(*) FILTER (WHERE os.is_late IS NOT NULL) AS delivered_orders_with_date,\n    ROUND(AVG(os.delivery_delay_days), 2) AS avg_delivery_delay_days,\n    ROUND(-AVG(os.delivery_delay_days), 2) AS avg_days_early\nFROM analytics.order_sellers os\nWHERE os.is_delivered = TRUE\n  AND os.delivery_delay_days IS NOT NULL\nGROUP BY os.seller_id, os.seller_state\nHAVING COUNT(*) FILTER (WHERE os.is_late IS NOT NULL) >= 50\nORDER BY AVG(os.delivery_delay_days) ASC\nLIMIT 10",
+      "validated_sql": "SELECT\n  os.seller_id,\n  os.seller_state,\n  COUNT(*) FILTER(WHERE\n    os.is_late IS NOT NULL) AS delivered_orders_with_date,\n  ROUND(CAST(AVG(os.delivery_delay_days) AS DECIMAL), 2) AS avg_delivery_delay_days,\n  ROUND(CAST(-AVG(os.delivery_delay_days) AS DECIMAL), 2) AS avg_days_early\nFROM analytics.order_sellers AS os\nWHERE\n  os.is_delivered = TRUE AND os.delivery_delay_days IS NOT NULL\nGROUP BY\n  os.seller_id,\n  os.seller_state\nHAVING\n  COUNT(*) FILTER(WHERE\n    os.is_late IS NOT NULL) >= 50\nORDER BY\n  AVG(os.delivery_delay_days) ASC\nLIMIT 10",
+      "reference_sql": "SELECT seller_id, -AVG(delivery_delay_days) AS average_lead_time_days\nFROM order_sellers\nGROUP BY seller_id\nHAVING COUNT(*) FILTER (WHERE is_delivered) >= 50\nORDER BY average_lead_time_days DESC\nLIMIT 10",
+      "attempts": [
+        {
+          "kind": "generation",
+          "outcome": "accepted",
+          "validation_codes": [],
+          "sql": "SELECT\n    os.seller_id,\n    os.seller_state,\n    COUNT(*) FILTER (WHERE os.is_late IS NOT NULL) AS delivered_orders_with_date,\n    ROUND(AVG(os.delivery_delay_days), 2) AS avg_delivery_delay_days,\n    ROUND(-AVG(os.delivery_delay_days), 2) AS avg_days_early\nFROM analytics.order_sellers os\nWHERE os.is_delivered = TRUE\n  AND os.delivery_delay_days IS NOT NULL\nGROUP BY os.seller_id, os.seller_state\nHAVING COUNT(*) FILTER (WHERE os.is_late IS NOT NULL) >= 50\nORDER BY AVG(os.delivery_delay_days) ASC\nLIMIT 10"
+        }
+      ]
+    }
+  ],
+  "version": 2,
+  "summary": {
+    "items": 35,
+    "scored": 35,
+    "unverified": 0,
+    "counts": {
+      "generated": 35,
+      "validated": 35,
+      "executed": 35,
+      "correct": 35
+    },
+    "rates": {
+      "generated": 1.0,
+      "validated": 1.0,
+      "executed": 1.0,
+      "correct": 1.0
+    },
+    "repair_rate": 0.0,
+    "repair_success": null,
+    "latency_ms": {
+      "p50": 2087.44,
+      "p95": 4272.32
+    },
+    "tokens_per_question": 7305.0,
+    "output_tokens_per_question": 254.5,
+    "cache_read_share": 0.9379,
+    "model_calls_per_question": 1.0,
+    "categories": {
+      "correct": 35
+    },
+    "by_difficulty": {
+      "easy": {
+        "scored": 11,
+        "correct": 11
+      },
+      "medium": {
+        "scored": 15,
+        "correct": 15
+      },
+      "hard": {
+        "scored": 9,
+        "correct": 9
+      }
+    }
+  }
+}

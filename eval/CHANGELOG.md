@@ -225,3 +225,27 @@ times.
 
 Nothing was changed because of this run.
 
+## Validator: NULLS LAST in rankings, shifted self-joins (2026-10-15)
+
+**Changes** ([ADR 0014 amendment](../docs/adr/0014-sql-validation-design.md)):
+- Query-level `ORDER BY ... DESC` now runs as `DESC NULLS LAST`. This is dev-012's
+  mechanism: a month with NULL revenue ranked first.
+- `a.k = b.k + constant` counts as a join key when both sides are the same column.
+  This is dev-017's month-over-month self-join, which was rejected and repaired in 2
+  of 3 Phase 9 runs.
+- The `rn = 1` / `rn = 2` false rejection is **not** changed. Its only evidence is
+  held-out test-023 (ADR 0006).
+
+**Measured**, against the Phase 9 after-runs (same pipeline otherwise, prompt v3):
+- Before: 35, 35, 35. **After: 35, 35, 35** ([r1](results/20261015T222450Z_dev_us-anthropic-claude-sonnet-4-6_r1of3.md),
+  [r2](results/20261015T222621Z_dev_us-anthropic-claude-sonnet-4-6_r2of3.md),
+  [r3](results/20261015T222752Z_dev_us-anthropic-claude-sonnet-4-6_r3of3.md)), all on a clean
+  commit `43fbd65`. `compare` says "no clear difference": dev is at its ceiling.
+- **No regression from the rewrite.** In every after-run the validator added
+  `NULLS LAST` to the same 5 items (dev-010, 011, 025, 028, 032), and all 5 stayed
+  correct.
+- **The shift rule was not exercised.** Rejected attempts went from 2 to 0 and repairs
+  from 2 to 0, but in all three after-runs dev-017 used `LAG()` rather than a
+  self-join. So I don't credit the shift rule with the drop. Its evidence is the
+  corpus and the integration test, which shows it gives exactly what `LAG()` gives.
+

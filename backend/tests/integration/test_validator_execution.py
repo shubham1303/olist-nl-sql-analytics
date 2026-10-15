@@ -84,6 +84,41 @@ def test_one_side_sum_per_seller_overstates_the_total(reader: Conn) -> None:
     assert per_seller > scalar(reader, "SELECT SUM(payment_total) FROM orders")
 
 
+def test_nulls_last_keeps_an_empty_month_out_of_the_top(reader: Conn) -> None:
+    # dev-012's mechanism: a 2018 month with no revenue orders has NULL revenue, which
+    # PostgreSQL sorts first under DESC
+    sql = (
+        "SELECT purchase_month, SUM(revenue) AS revenue FROM analytics.orders "
+        "WHERE purchase_month >= DATE '2018-01-01' GROUP BY purchase_month "
+        "ORDER BY revenue DESC LIMIT 1"
+    )
+    as_written = reader.execute(sql).fetchone()
+    assert as_written is not None and as_written[1] is None
+    result = VALIDATOR.validate(sql)
+    assert result.sql is not None
+    validated = reader.execute(result.sql).fetchone()
+    assert validated is not None and validated[1] == scalar(
+        reader,
+        "SELECT max(r) FROM (SELECT SUM(revenue) AS r FROM analytics.orders "
+        "WHERE purchase_month >= DATE '2018-01-01' GROUP BY purchase_month) x",
+    )
+
+
+def test_previous_month_self_join_matches_lag(reader: Conn) -> None:
+    case = next(c for c in ACCEPTED if c.id == "self_join_previous_month")
+    result = VALIDATOR.validate(case.sql)
+    assert result.sql is not None
+    joined = reader.execute(f"SELECT * FROM ({result.sql}) x ORDER BY 1").fetchall()
+    lagged = reader.execute(
+        "SELECT * FROM (SELECT purchase_month, SUM(revenue) AS rev, "
+        "LAG(SUM(revenue)) OVER (ORDER BY purchase_month) AS previous, "
+        "LAG(purchase_month) OVER (ORDER BY purchase_month) AS previous_month "
+        "FROM analytics.orders GROUP BY purchase_month) x "
+        "WHERE previous_month = purchase_month - INTERVAL '1 month' ORDER BY 1"
+    ).fetchall()
+    assert joined == [row[:3] for row in lagged]
+
+
 def test_safe_preaggregation_gives_the_true_answer(executor: PostgresExecutor) -> None:
     case = next(c for c in ACCEPTED if c.id == "preaggregate_payments_cte")
     result = VALIDATOR.validate(case.sql)

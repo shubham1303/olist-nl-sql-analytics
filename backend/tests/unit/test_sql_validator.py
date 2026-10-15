@@ -134,6 +134,31 @@ def test_limit_is_added_only_at_the_top_level(validator: SqlValidator) -> None:
     assert result.sql.count("LIMIT 3") == 1 and result.sql.rstrip().endswith("LIMIT 1001")
 
 
+def test_descending_sorts_put_nulls_last(validator: SqlValidator) -> None:
+    result = validator.validate(
+        "SELECT x.seller_id, x.r FROM (SELECT seller_id, SUM(revenue) AS r FROM order_sellers "
+        "GROUP BY seller_id ORDER BY r DESC LIMIT 3) x ORDER BY x.r DESC, x.seller_id"
+    )
+    assert result.sql is not None
+    flat = " ".join(result.sql.split())
+    assert flat.count("DESC NULLS LAST") == 2  # subquery and outer query
+    assert "seller_id NULLS" not in flat  # ascending keys already sort NULLs last
+
+
+def test_window_and_explicit_null_orderings_are_kept(validator: SqlValidator) -> None:
+    window = validator.validate(
+        "SELECT purchase_month, LAG(purchase_month) OVER (ORDER BY purchase_month DESC) AS x "
+        "FROM orders GROUP BY purchase_month"
+    )
+    assert window.sql is not None and "NULLS" not in window.sql
+    explicit = validator.validate(
+        "SELECT seller_id, SUM(revenue) AS r FROM order_sellers GROUP BY seller_id "
+        "ORDER BY r DESC NULLS FIRST LIMIT 5"
+    )
+    # sqlglot drops the redundant NULLS FIRST (PostgreSQL's DESC default); it must not flip
+    assert explicit.sql is not None and "NULLS LAST" not in explicit.sql
+
+
 def test_union_gets_one_limit(validator: SqlValidator) -> None:
     result = validator.validate("SELECT 1 AS x UNION ALL SELECT 2")
     assert result.ok and result.sql is not None

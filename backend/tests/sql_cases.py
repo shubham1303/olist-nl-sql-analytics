@@ -237,6 +237,19 @@ ACCEPTED: list[Case] = [
     ),
     # one side joined to a bridge and grouped by its attribution key: each order once per
     # seller/category, so per-entity statistics are exact (SUM stays rejected)
+    # a key shifted by a constant: month-over-month self-joins (dev-017)
+    Case(
+        "self_join_previous_month",
+        "WITH m AS (SELECT purchase_month, SUM(revenue) AS rev FROM orders GROUP BY purchase_month) "
+        "SELECT c.purchase_month, c.rev, p.rev AS previous FROM m c "
+        "JOIN m p ON c.purchase_month = p.purchase_month + INTERVAL '1 month'",
+    ),
+    Case(
+        "self_join_previous_month_minus",
+        "WITH m AS (SELECT purchase_month, COUNT(*) AS n FROM orders GROUP BY purchase_month) "
+        "SELECT c.purchase_month, c.n - p.n AS change FROM m c "
+        "LEFT JOIN m p ON p.purchase_month = c.purchase_month - INTERVAL '1 month'",
+    ),
     Case(
         "one_side_avg_per_seller",
         "SELECT s.seller_id, AVG(o.review_score) AS avg_score, COUNT(o.order_id) AS orders "
@@ -693,6 +706,32 @@ REJECTED: list[Case] = [
     Case(
         "bridge_joined_to_orders",
         "SELECT AVG(s.review_score) FROM order_sellers s JOIN orders o ON o.order_id = s.order_id",
+        E.FANOUT_RISK,
+    ),
+    Case(
+        "shifted_join_across_different_columns",
+        "WITH m AS (SELECT purchase_month, MIN(purchase_date) AS first_day FROM orders "
+        "GROUP BY purchase_month) SELECT c.purchase_month FROM m c "
+        "JOIN m p ON c.purchase_month = p.first_day + INTERVAL '1 month'",
+        E.INVALID_JOIN_PATH,
+    ),
+    Case(
+        "shifted_join_on_a_non_unique_view",
+        "SELECT COUNT(*) FROM orders o "
+        "JOIN orders p ON o.purchase_month = p.purchase_month + INTERVAL '1 month'",
+        E.INVALID_JOIN_PATH,
+    ),
+    Case(
+        "shift_by_a_column_is_not_a_key",
+        "WITH m AS (SELECT purchase_month, SUM(revenue) AS rev FROM orders GROUP BY purchase_month) "
+        "SELECT c.rev FROM m c JOIN m p ON c.purchase_month = p.purchase_month + c.rev",
+        E.INVALID_JOIN_PATH,
+    ),
+    Case(
+        "shifted_join_still_checks_fanout",
+        "WITH m AS (SELECT purchase_month, SUM(revenue) AS rev FROM orders GROUP BY purchase_month) "
+        "SELECT SUM(m.rev) FROM m JOIN orders o "
+        "ON o.purchase_month = m.purchase_month + INTERVAL '1 month'",
         E.FANOUT_RISK,
     ),
     Case(

@@ -250,12 +250,18 @@ function App() {
             </div>
           )}
           {error && (
-            <p className="card failure" role="alert">
-              {error}
-            </p>
+            <div className="card soft-failure tone-error" role="alert">
+              <h2>Couldn't reach the service</h2>
+              <p>{error} Check your connection, then try again.</p>
+              <div className="failure-actions">
+                <button type="button" disabled={!ready || !question.trim()} onClick={() => void ask(question.trim())}>
+                  Try again
+                </button>
+              </div>
+            </div>
           )}
           {result && !busy && (
-            <ResultPanel key={activeId ?? result.question} result={result} onOpenCatalog={openCatalog} />
+            <ResultPanel key={activeId ?? result.question} result={result} onOpenCatalog={openCatalog} onAsk={ask} />
           )}
           {!result && !busy && !error && db.phase !== 'starting' && (
             <EmptyState disabled={!ready} onAsk={ask} onOpenCatalog={() => openCatalog()} />

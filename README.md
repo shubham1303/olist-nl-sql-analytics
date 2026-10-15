@@ -40,6 +40,11 @@ The sidebar keeps the questions from this tab, and "What can I ask?" lists every
 metric, view and column the model can use, plus example questions. That panel is
 generated from the same catalog as the prompt.
 
+If a question can't be answered (a greeting, a request to delete data, something
+outside the dataset) or the SQL is rejected, the app says so in plain words. It gives
+the model's reason and a few questions that do work, and keeps the error code and
+the unrun SQL under "Technical details".
+
 The model never sees actual rows from the database, and it's never called more
 than twice per question.
 

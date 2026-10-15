@@ -209,3 +209,12 @@ resource "aws_budgets_budget" "monthly" {
     subscriber_email_addresses = [var.alert_email]
   }
 }
+
+# Lets Cost Explorer split this project's costs from anything else in the account
+# (docs/costs.md). Every resource carries Project = var.project through the provider's
+# default_tags. This is an account-wide billing setting; data appears within a day.
+# Deleting the resource deactivates the tag again.
+resource "aws_ce_cost_allocation_tag" "project" {
+  tag_key = "Project"
+  status  = "Active"
+}

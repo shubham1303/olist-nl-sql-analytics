@@ -130,6 +130,7 @@ class SqlValidator:
             qualified = self._qualify(tree, relations)
             warnings = GrainAnalyzer(self.policy).run(list(traverse_scope(qualified)))
             limit_applied = self._apply_limit(tree)
+            _sort_nulls_last(tree, sql)
             self._qualify_relation_names(tree)
             output = tree.sql(dialect=DIALECT, pretty=True, comments=False)
             self._check_round_trip(output)
@@ -573,6 +574,34 @@ class SqlValidator:
             raise failure from None
         if len(statements) != 1 or not isinstance(statements[0], (exp.Select, exp.Union)):
             raise failure
+
+
+_NULLS_FIRST = re.compile(r"\bnulls\s+first\b", re.IGNORECASE)
+
+
+def _sort_nulls_last(tree: exp.Expr, sql: str) -> int:
+    """Rankings put NULLs last: query-level ORDER BY ... DESC becomes DESC NULLS LAST.
+
+    PostgreSQL sorts NULLs first under DESC, so "the top month by revenue" returned a
+    month with no revenue orders (dev-012). A NULL is never the highest value someone
+    asked for. Window and WITHIN GROUP orderings are left alone, and so is any query
+    that spells out NULLS FIRST: sqlglot parses it the same as a bare DESC, so the
+    original text decides. Returns how many sort keys changed.
+    """
+    if _NULLS_FIRST.search(sql):
+        return 0
+    changed = 0
+    for ordered in tree.find_all(exp.Ordered):
+        order = ordered.parent
+        if not (
+            isinstance(order, exp.Order)
+            and isinstance(order.parent, (exp.Select, exp.SetOperation))
+        ):
+            continue  # inside OVER (...), WITHIN GROUP (...) or an aggregate
+        if ordered.args.get("desc") and ordered.args.get("nulls_first"):
+            ordered.set("nulls_first", False)
+            changed += 1
+    return changed
 
 
 def _dedupe(issues: list[Issue]) -> list[Issue]:

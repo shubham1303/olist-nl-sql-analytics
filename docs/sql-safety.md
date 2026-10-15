@@ -311,6 +311,18 @@ A result is a `ValidationResult` with these fields:
 A LIMIT is only ever added to the outermost query. Inner subquery limits are left
 alone, because changing them would change aggregate results.
 
+**Rankings put NULLs last.** Every query-level `ORDER BY ... DESC` (outer query and
+subqueries) becomes `DESC NULLS LAST` in the SQL that runs. PostgreSQL sorts NULLs
+first under `DESC`, so "the top month by revenue" used to return a month with no
+revenue orders (dev-012). Window orderings (`OVER (ORDER BY ...)`) and `WITHIN GROUP`
+are left alone. A query that explicitly asks for `NULLS FIRST` is not changed.
+
+**Shifted self-joins.** `ON c.month = p.month + INTERVAL '1 month'` (or `- ...`, or a
+number) counts as a key equality when both sides are the same column. Adding a
+constant is one-to-one, so a monthly subquery stays unique on the shifted key. The
+usual cardinality and fan-out checks still apply. A shift across different columns,
+or by another column, is still rejected.
+
 ## Known limitations
 
 **It may reject legitimate SQL:**
@@ -323,8 +335,12 @@ alone, because changing them would change aggregate results.
   a per-order subquery.
 - **`SELECT DISTINCT` subqueries** are treated conservatively. Duplication flags survive
   the DISTINCT, even when the grain key is projected.
-- **Joins with computed keys** (`LOWER(a) = b`), joins whose condition spans several
-  earlier relations, and `RIGHT`/`FULL` joins.
+- **Joins with computed keys** (`LOWER(a) = b`) other than a constant shift of the
+  same column, joins whose condition spans several earlier relations, and
+  `RIGHT`/`FULL` joins.
+- **Uniqueness from a filter.** A `ROW_NUMBER() ... WHERE rn = 1` subquery has one row
+  per partition, but the validator doesn't see that, so two such subqueries joined
+  on the partition key are rejected as many-to-many.
 - **Filtering a bridge to one seller** (`WHERE seller_id = 'x'`) makes outcomes valid,
   but only `GROUP BY` is recognised.
 - **Anything sqlglot can't parse or regenerate faithfully**, such as some escape-string

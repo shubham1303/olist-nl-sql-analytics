@@ -90,3 +90,31 @@ seller group every order occurs once.
 - **Evidence.** The integration suite checks two things. The accepted per-seller
   average equals the bridge-only answer row for row. The rejected per-seller `SUM`
   adds up to more than the true total.
+
+## Amendment (2026-10-15): NULLS LAST in rankings, shifted self-joins
+
+Two changes, both from dev evidence:
+
+- **NULLS LAST.**
+  - The validator now rewrites every query-level `ORDER BY ... DESC` to
+    `DESC NULLS LAST`.
+  - **Why:** dev-012 ranked months by `SUM(revenue) DESC`, and a month with no
+    revenue orders (NULL) came first. Prompt v2's rule against this helps, but a
+    rule in the prompt is a request, while the regenerated SQL is a guarantee.
+  - **Not changed:** window and `WITHIN GROUP` orderings, and queries whose text
+    asks for `NULLS FIRST`. sqlglot parses that the same as a bare `DESC`, so the
+    original text decides.
+  - It is a rewrite, not an error, and it is visible in the SQL the user sees.
+- **Shifted self-joins.**
+  - `a.k = b.k + constant` (an `INTERVAL` or a number, or `-`) counts as a key pair
+    when `a.k` and `b.k` trace to the same column.
+  - **Why:** dev-017's month-over-month self-join was rejected as
+    `INVALID_JOIN_PATH` and needed a repair.
+  - **Still rejected:** a shift across different columns, or by a non-constant. The
+    cardinality and fan-out analysis runs unchanged.
+- **Not changed:** two `ROW_NUMBER() ... rn = 1` / `rn = 2` subqueries joined on the
+  partition key are still rejected. The only evidence for that false rejection is a
+  held-out item (test-023), and ADR 0006 does not allow tuning on held-out results.
+  It stays a known limitation in [sql-safety.md](../sql-safety.md) until a dev item
+  shows it.
+

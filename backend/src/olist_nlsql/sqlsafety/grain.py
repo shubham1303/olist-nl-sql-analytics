@@ -105,6 +105,44 @@ def _conjuncts(condition: exp.Expr) -> list[exp.Expr]:
     return [condition]
 
 
+def _is_constant(node: exp.Expr) -> bool:
+    if isinstance(node, exp.Neg):
+        return _is_constant(node.this)
+    if isinstance(node, exp.Interval):
+        return node.find(exp.Column) is None
+    return isinstance(node, exp.Literal) and not node.is_string
+
+
+def _shifted_column(node: exp.Expr) -> exp.Column | None:
+    """The column in `col + c`, `c + col` or `col - c`, where c is an INTERVAL or a number.
+
+    Adding a constant is one-to-one, so a source unique on col is unique on col + c too:
+    that is what makes a previous-month self-join (m.month = p.month + INTERVAL '1 month')
+    a safe key equality.
+    """
+    node = node.unnest()
+    if isinstance(node, exp.Add):
+        for column, other in ((node.left, node.right), (node.right, node.left)):
+            if isinstance(column, exp.Column) and _is_constant(other):
+                return column
+    if isinstance(node, exp.Sub) and isinstance(node.left, exp.Column) and _is_constant(node.right):
+        return node.left
+    return None
+
+
+def _key_equality(predicate: exp.Expr) -> tuple[exp.Column, exp.Column, bool] | None:
+    """(column, column, shifted) for `a = b` or `a = b + constant`, else None."""
+    if not isinstance(predicate, exp.EQ):
+        return None
+    left, right = predicate.left, predicate.right
+    if isinstance(left, exp.Column) and isinstance(right, exp.Column):
+        return left, right, False
+    for column, other in ((left, right), (right, left)):
+        if isinstance(column, exp.Column) and (inner := _shifted_column(other)) is not None:
+            return column, inner, True
+    return None
+
+
 def _fail(code: ErrorCode, message: str, **details: str) -> ValidationFailure:
     return ValidationFailure(Issue(code, message, dict(details)))
 
@@ -215,6 +253,7 @@ class GrainAnalyzer:
             )
 
         pairs: list[tuple[exp.Column, exp.Column]] = []  # (left column, right column)
+        shifted: set[int] = set()  # indexes into pairs joined as col = col + constant
         left_alias: str | None = None
         for predicate in _conjuncts(on):
             if predicate.find(exp.Select, exp.Subquery):
@@ -227,17 +266,14 @@ class GrainAnalyzer:
             touches_left = bool(aliases - {right.alias})
             if not (touches_right and touches_left):
                 continue  # a filter on one side, e.g. ON ... AND o.is_delivered
-            if not (
-                isinstance(predicate, exp.EQ)
-                and isinstance(predicate.left, exp.Column)
-                and isinstance(predicate.right, exp.Column)
-            ):
+            key = _key_equality(predicate)
+            if key is None:
                 # A condition across both sides that is not a key equality, e.g.
                 # ON o.k = c.k AND o.purchased_at > c.first_at. ANDed with the key pairs it
                 # can only remove rows, so the cardinality analysis below still holds. A join
                 # with no key pair at all is still rejected after the loop.
                 continue
-            a, b = predicate.left, predicate.right
+            a, b, is_shift = key
             left_col, right_col = (b, a) if a.table == right.alias else (a, b)
             if left_col.table == right.alias or right_col.table != right.alias:
                 raise _fail(
@@ -252,6 +288,8 @@ class GrainAnalyzer:
                     "relation through a single relationship.",
                 )
             left_alias = left_col.table
+            if is_shift:
+                shifted.add(len(pairs))
             pairs.append((left_col, right_col))
 
         if not pairs or left_alias is None:
@@ -262,8 +300,11 @@ class GrainAnalyzer:
                 relation=right.label,
             )
         left = left_sources[left_alias]
-        for left_col, right_col in pairs:
-            self._check_pair(left, left_col, right, right_col)
+        for index, (left_col, right_col) in enumerate(pairs):
+            if index in shifted:
+                self._check_shifted_pair(left, left_col, right, right_col)
+            else:
+                self._check_pair(left, left_col, right, right_col)
 
         left_cols = {c.name for c, _ in pairs}
         right_cols = {c.name for _, c in pairs}
@@ -329,6 +370,21 @@ class GrainAnalyzer:
                 f"{right_ref[0]}.{right_ref[1]} are not related keys. "
                 f"{self._join_advice(left, right)}",
                 condition=text,
+            )
+
+    @staticmethod
+    def _check_shifted_pair(
+        left: Source, left_col: exp.Column, right: Source, right_col: exp.Column
+    ) -> None:
+        """`a.k = b.k + constant` is only a key equality when both sides are the same column."""
+        left_ref = left.lineage.get(left_col.name)
+        if left_ref is None or left_ref != right.lineage.get(right_col.name):
+            raise _fail(
+                ErrorCode.INVALID_JOIN_PATH,
+                f"A shifted join key ({left_col.sql('postgres')} = {right_col.sql('postgres')} "
+                "plus a constant) must compare the same column on both sides, e.g. a month "
+                "with the previous month of the same monthly subquery.",
+                relation=right.label,
             )
 
     def _join_advice(self, left: Source, right: Source) -> str:

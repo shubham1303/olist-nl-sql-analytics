@@ -65,20 +65,20 @@ execution error) aren't repaired, because the SQL was valid.
 ## The prompt
 
 The system prompt is built deterministically from the catalog
-(`PROMPT_VERSION = "v2"`). It's identical on both calls, so it's marked for prompt
+(`PROMPT_VERSION = "v3"`). It's identical on both calls, so it's marked for prompt
 caching. It has eight sections:
 
 | Section | Contents | Size |
 |---|---|---:|
 | Intro | Task, currency, "validated, read-only" | 0.3k chars |
-| SQL rules | One SELECT, listed relations and columns only, no `SELECT *`, listed joins only, fan-out rule, bridge attribution rule, the function and cast allowlists from the catalog, no `NOW()`, row cap | 1.7k |
-| Business rules | Merchandise revenue, `customer_unique_id`, late-rate denominator, latest review, catalog definitions over assumptions, stating assumptions, keeping the requested period, `can_answer = false` | 1.2k |
+| SQL rules | One SELECT, listed relations and columns only, no `SELECT *`, listed joins only, fan-out rule, bridge attribution rule, the function and cast allowlists from the catalog, no `NOW()`, row cap, `NULLS LAST` in rankings | 1.9k |
+| Business rules | Merchandise revenue, `customer_unique_id`, late-rate denominator, latest review, a summary row for "within" / "controlling for" questions (v3), catalog definitions over assumptions, stating assumptions, keeping the requested period, `can_answer = false` | 1.8k |
 | Dataset | Catalog notes (date coverage, recommended window) and glossary | 1.2k |
-| Relations | Each exposed relation: grain, key, description, columns with types, descriptions and allowed values, caveats | 11.8k |
+| Relations | Each exposed relation: grain, key, description, columns with types, descriptions and allowed values, caveats | 11.9k |
 | Relationships | The 7 allowed joins with their keys | 0.7k |
-| Metrics | 16 metrics: name, aliases, definition, SQL, exclusions, caveats | 5.8k |
+| Metrics | 17 metrics: name, aliases, definition, SQL, exclusions, caveats | 6.5k |
 | Output | Call `submit_answer` once, and its fields | 0.3k |
-| **Total** | | **≈ 22.9k chars, ≈ 5.7k tokens** (chars / 4) |
+| **Total** | | **≈ 24.7k chars, ≈ 6.2k tokens** (chars / 4; Bedrock counts about 6.6k cached) |
 
 `python -m olist_nlsql prompt --stats` prints the current sizes. A unit test fails if
 the prompt passes 30,000 characters, so growth gets noticed.

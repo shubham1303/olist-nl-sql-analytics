@@ -6,7 +6,7 @@ human-written items in [ADR 0018](../docs/adr/0018-human-written-benchmark-items
 
 | Path | What |
 |---|---|
-| `benchmark/dev.yaml` | 34 development questions (4 human-written): the only split used while tuning |
+| `benchmark/dev.yaml` | 35 development questions (5 human-written): the only split used while tuning |
 | `benchmark/test.yaml` | 23 held-out questions (3 human-written): checkpoint runs only, never tuned on |
 | `results/` | One JSON record + markdown report per run, committed |
 | `triage/<run_id>.yaml` | Human failure categories for a run (optional) |
@@ -72,7 +72,7 @@ scored 30, 30, 30, 28). A claim that a change helped needs at least three runs p
    fake-model runs, and runs over different benchmark versions or items.
 3. Put the comparison in [CHANGELOG.md](CHANGELOG.md).
 
-A 34-item run costs about 250k tokens (about 90% read from cache) and 65–100 s.
+A 35-item run costs about 250k tokens (about 90% read from cache) and 65–100 s.
 
 ## Triage
 

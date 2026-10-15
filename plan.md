@@ -1,7 +1,7 @@
 # Olist NL-to-SQL Analytics — Implementation Plan
 
-Status: **Phases 0–9 done.** Live at https://dunn64bzakzr8.cloudfront.net (access code required); every merge to `main` deploys. On `us.anthropic.claude-sonnet-4-6`, prompt v3: dev 35/35 (3 runs), held-out 21/23 (original 20 items 19/20, human-written 2/3). Measured idle cost about $1.25/month. Decisions locked in [docs/adr/](docs/adr/README.md).
-Last updated: 2026-10-14
+Status: **Phases 0–9 done.** Live at https://dunn64bzakzr8.cloudfront.net (access code required); every merge to `main` deploys. On `us.anthropic.claude-sonnet-4-6`, prompt v3: dev 35/35 (3 runs), held-out 21/23 (original 20 items 19/20, human-written 2/3). Measured idle cost about $1.25/month. Follow-ups after Phase 9 are logged in §9. Decisions locked in [docs/adr/](docs/adr/README.md).
+Last updated: 2026-10-15
 
 ---
 
@@ -31,7 +31,7 @@ What makes it portfolio-worthy is **not** the LLM call. It is:
 | LLM | Bedrock `us-east-1`, Claude Sonnet 4.6 via `us.anthropic.claude-sonnet-4-6` (Sonnet 5 unavailable to the account; later config swap + re-baseline); model ID only in config; ≤ 2 model calls per question; results never sent back to the model | [0003](docs/adr/0003-llm-provider-and-model.md), [0019](docs/adr/0019-sonnet-4-6-current-model.md) |
 | Access & cost | Shared access code (hash stored server-side); route throttling; 500-char question cap; 4 KiB body; reserved concurrency; bounded output; $20 budget at 50/80/100% (alert, not cap) | [0004](docs/adr/0004-public-access-and-cost-controls.md) |
 | Schema | Curated `analytics` views over hidden `raw` schema; one `catalog.yaml` generates both prompt context and validator allowlist; geolocation excluded; catalog resolves known terms, otherwise state the assumption and answer | [0005](docs/adr/0005-curated-analytics-schema-and-catalog.md) |
-| Evaluation | 57 questions: 34 dev / 23 held-out (7 human-written); human-verified references; no tuning on held-out; stage metrics reported separately; no fabricated numbers | [0006](docs/adr/0006-evaluation-methodology.md), [0018](docs/adr/0018-human-written-benchmark-items.md) |
+| Evaluation | 58 questions: 35 dev / 23 held-out (8 human-written); human-verified references; no tuning on held-out; stage metrics reported separately; no fabricated numbers | [0006](docs/adr/0006-evaluation-methodology.md), [0018](docs/adr/0018-human-written-benchmark-items.md) |
 | Charts | Deterministic frontend rules from result shape; no LLM | [0007](docs/adr/0007-deterministic-chart-selection.md) |
 | Exclusions | No RAG/vector DB, LangChain/agents, NAT, RDS Proxy, Cognito, WAF, DynamoDB, SQS, X-Ray | [0008](docs/adr/0008-excluded-services.md) |
 | Tooling | Python 3.13 + uv + ruff + mypy strict + pytest; Vite/React/TS + Vitest + npm; Terraform single root; GitHub Actions | [0009](docs/adr/0009-tooling-and-repo-conventions.md) |
@@ -162,7 +162,7 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 | Dataset licence (CC BY-NC-SA 4.0) | Download script; never commit raw data; attribution in README |
 | Model unavailability (happened: Sonnet 5 refused for the account, 2026-10) | Model ID only in config (`NLSQL_BEDROCK_MODEL_ID`, ADR 0019); after any model swap, re-baseline with a live smoke test, a fresh dev run and a held-out checkpoint, and report models separately |
 | Held-out contamination from repeated checkpoints | Checkpoints only at phase ends, each recorded; never change anything because of a test result. **Checkpoints so far: 2** (end of Phase 4, end of Phase 5) |
-| Small benchmark (34 dev / 23 held-out) | About 4.3 points per held-out item (about 2.9 per dev item), so differences of 1–2 items are not meaningful on their own; quote item counts, not just percentages, and repeat dev runs before claiming an improvement |
+| Small benchmark (35 dev / 23 held-out) | About 4.3 points per held-out item (about 2.9 per dev item), so differences of 1–2 items are not meaningful on their own; quote item counts, not just percentages, and repeat dev runs before claiming an improvement |
 
 ---
 
@@ -200,6 +200,32 @@ EXPLAIN cost guard, Playwright e2e, feedback capture.
 ---
 
 ## 9. Progress log
+
+### After Phase 9 (2026-10-15)
+
+- **Chip labels (PR #12):** the SQL view's "Uses" row is split into View and Metric
+  groups, so the `orders` view and the "Orders" metric aren't confused.
+- **Validator (PR #13, dev evidence only, ADR 0014 amendment):**
+  - Query-level `ORDER BY ... DESC` now runs as `DESC NULLS LAST`. This addresses
+    dev-012's mechanism, which was also behind the held-out test-021 miss.
+  - A constant shift of the same column counts as a join key (dev-017's
+    previous-month self-join).
+  - Dev 35, 35, 35 before and after, so no regression. The rewrite touched 5 items
+    per run, all still correct. The shift rule wasn't exercised, because dev-017 used
+    `LAG()`.
+  - The `rn = 1` / `rn = 2` false rejection stays. Its only evidence is held-out
+    test-023. A live question in the same shape passed, because the model pivoted
+    with `FILTER` instead of joining. It's a near-copy of test-023, so it was not
+    added to dev.
+- **Friendly failure screens (PR #13):** unanswerable inputs, rejections and
+  temporary errors are shown in plain words, with the model's reason, questions that
+  work, and Try again. The technical details are collapsed. UI only.
+- **Costs (PR #14):** the `Project` cost-allocation tag is active (Terraform,
+  applied after review), backfilled from 2026-10-01. Still to do: replace the
+  by-service table in [costs.md](docs/costs.md) with per-project numbers once the
+  data appears.
+- **Fixed along the way:** an integration test that hit the 10 s statement timeout
+  on a slow CI runner (PR #11).
 
 ### Phase 9 (done, 2026-10-14)
 

@@ -11,18 +11,18 @@ accepted; to change a decision, add a new ADR that supersedes it.
 | [0004](0004-public-access-and-cost-controls.md) | Shared access code, throttling, request limits, $20 budget | Accepted (reserved concurrency deferred 2026-10-13) |
 | [0005](0005-curated-analytics-schema-and-catalog.md) | Curated analytics views + one catalog as source of truth | Accepted |
 | [0006](0006-evaluation-methodology.md) | 50-question benchmark, 30 dev / 20 held-out, verified references | Accepted (comparison detailed in 0017; sizes amended by 0018) |
-| [0007](0007-deterministic-chart-selection.md) | Deterministic chart selection from result shape | Accepted |
+| [0007](0007-deterministic-chart-selection.md) | Deterministic chart selection from result shape | Accepted (refined 2026-10-13; headline and takeaways amended 2026-10-14) |
 | [0008](0008-excluded-services.md) | Services deliberately excluded until a measured need exists | Accepted |
 | [0009](0009-tooling-and-repo-conventions.md) | Tooling and repository conventions | Accepted |
 | [0010](0010-canonical-revenue.md) | Canonical revenue is merchandise revenue | Accepted |
 | [0011](0011-review-and-outcome-attribution.md) | Latest review per order; full outcome attribution in seller/category views | Accepted |
 | [0012](0012-category-translation-provenance.md) | Category translations: raw unchanged, corrections in the curated layer with provenance | Accepted |
 | [0013](0013-recommended-time-window.md) | 2017-01 to 2018-08 is a recommended window, not an automatic filter | Accepted |
-| [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted |
+| [0014](0014-sql-validation-design.md) | SQL validation: AST-based, fail-closed, catalog-driven and grain-aware | Accepted (amended 2026-10-14: per-group statistics; 2026-10-15: NULLS LAST, shifted self-joins) |
 | [0015](0015-model-visible-relations.md) | The model sees fact views and product attributes; lifetime summaries are hidden | Accepted |
 | [0016](0016-bedrock-client-and-structured-output.md) | Bedrock: bedrock-runtime endpoint, Messages request shape, forced tool call for structured replies | Accepted (model ID and tool-call rationale amended by 0019) |
-| [0017](0017-benchmark-comparison-and-verification.md) | Benchmark result comparison and verification pinning | Accepted |
-| [0018](0018-human-written-benchmark-items.md) | Human-written benchmark items (34 dev / 23 held-out) | Accepted |
+| [0017](0017-benchmark-comparison-and-verification.md) | Benchmark result comparison and verification pinning | Accepted (amended 2026-10-14: `allow_negated`) |
+| [0018](0018-human-written-benchmark-items.md) | Human-written benchmark items (34 dev / 23 held-out) | Accepted (amended: dev-035, now 35 dev) |
 | [0019](0019-sonnet-4-6-current-model.md) | Claude Sonnet 4.6 is the current model; Sonnet 5 is a later config swap | Accepted |
 
 Template: [template.md](template.md)

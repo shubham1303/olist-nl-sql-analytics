@@ -88,7 +88,7 @@ What each step guarantees:
 |---|---|---|
 | Prompt | The model only sees exposed views, columns, relationships and metric definitions, generated from one catalog | [prompts.py](../backend/src/olist_nlsql/llm/prompts.py), [catalog.yaml](../backend/src/olist_nlsql/catalog/catalog.yaml) |
 | Model call | A forced `submit_answer` tool call, parsed strictly, at most 2 calls per question | [bedrock.py](../backend/src/olist_nlsql/llm/bedrock.py), [pipeline.py](../backend/src/olist_nlsql/pipeline.py) |
-| Validation | Single SELECT, allowlisted views, columns and functions, catalog joins only, no fan-out, LIMIT enforced | [sql-safety.md](sql-safety.md) |
+| Validation | Single SELECT, allowlisted views, columns and functions, catalog joins only, no fan-out, LIMIT enforced, rankings sort NULLs last | [sql-safety.md](sql-safety.md) |
 | Execution | The validator's SQL, never the model's text, as a read-only role on the analytics views only | [security.md](security.md) |
 | Presentation | Chart, headline and takeaways computed from the rows in the browser; SQL and assumptions always shown | [selectChart.ts](../frontend/src/charts/selectChart.ts), [summary.ts](../frontend/src/lib/summary.ts) |
 

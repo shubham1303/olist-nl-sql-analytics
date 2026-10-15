@@ -762,10 +762,17 @@ th.num .sort {
 .uses {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.35rem 1.1rem;
   align-items: center;
   margin-bottom: 0.6rem;
   font-size: 0.82rem;
+}
+
+.uses-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .sql-body {

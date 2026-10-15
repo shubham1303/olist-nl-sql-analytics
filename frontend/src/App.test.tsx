@@ -180,7 +180,21 @@ describe('results', () => {
     expect(screen.getByRole('table')).toHaveTextContent('13,494,400.74') // Table is the default tab
     fireEvent.click(screen.getByRole('tab', { name: 'SQL' }))
     expect(screen.getByText('LIMIT', { selector: '.tok-keyword' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'orders' })).toBeInTheDocument() // Uses: the view
+    expect(screen.getByRole('group', { name: 'Views used' })).toHaveTextContent('Vieworders')
+    expect(screen.getByRole('button', { name: 'orders (view)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Merchandise revenue (metric)' })).toBeInTheDocument()
+  })
+
+  it('a view and a metric with the same name are told apart', async () => {
+    on('/query', json(200, answer({ metrics_used: ['order_count'], validated_sql: 'SELECT COUNT(*) AS orders FROM analytics.orders LIMIT 1001' })))
+    render(<App />)
+    await enterCode()
+    await ask('How many orders?')
+    fireEvent.click(screen.getByRole('tab', { name: 'SQL' }))
+    expect(screen.getByRole('group', { name: 'Views used' })).toHaveTextContent(/^View\s*orders$/)
+    expect(screen.getByRole('group', { name: 'Metrics used' })).toHaveTextContent(/^Metric\s*Orders$/)
+    fireEvent.click(screen.getByRole('button', { name: 'Orders (metric)' }))
+    expect(document.getElementById('catalog-metric-order_count')).toHaveClass('targeted')
   })
 
   it('chart choice follows the result shape, with a table always available', async () => {

@@ -29,30 +29,45 @@ export function SqlView({ sql, metrics = [], onOpenCatalog }: Props) {
   return (
     <div className="sql-view">
       {(relations.length > 0 || known.length > 0) && (
-        <div className="uses" aria-label="Uses">
-          <span className="muted">Uses</span>
-          {relations.map((name) => (
-            <button
-              key={`r-${name}`}
-              type="button"
-              className="chip chip-view"
-              title="Open this view in “What can I ask?”"
-              onClick={() => onOpenCatalog?.({ kind: 'relation', name })}
-            >
-              {name}
-            </button>
-          ))}
-          {known.map((name) => (
-            <button
-              key={`m-${name}`}
-              type="button"
-              className="chip chip-metric"
-              title={metric(name)?.definition}
-              onClick={() => onOpenCatalog?.({ kind: 'metric', name })}
-            >
-              {metric(name)?.label ?? name}
-            </button>
-          ))}
+        <div className="uses">
+          {/* labelled groups: a view and a metric can share a name (orders / Orders) */}
+          {relations.length > 0 && (
+            <div className="uses-group" role="group" aria-label="Views used">
+              <span className="muted">{relations.length === 1 ? 'View' : 'Views'}</span>
+              {relations.map((name) => (
+                <button
+                  key={`r-${name}`}
+                  type="button"
+                  className="chip chip-view"
+                  aria-label={`${name} (view)`}
+                  title="Open this view in “What can I ask?”"
+                  onClick={() => onOpenCatalog?.({ kind: 'relation', name })}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+          {known.length > 0 && (
+            <div className="uses-group" role="group" aria-label="Metrics used">
+              <span className="muted">{known.length === 1 ? 'Metric' : 'Metrics'}</span>
+              {known.map((name) => {
+                const label = metric(name)?.label ?? name
+                return (
+                  <button
+                    key={`m-${name}`}
+                    type="button"
+                    className="chip chip-metric"
+                    aria-label={`${label} (metric)`}
+                    title={metric(name)?.definition}
+                    onClick={() => onOpenCatalog?.({ kind: 'metric', name })}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
       <div className="sql-body">
